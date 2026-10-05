@@ -1,65 +1,87 @@
-# libero-cooking-twin
+# Does the robot follow the words, or the scene?
 
-**Do vision-language-action models follow the words, or the scene?**
-A one-word "twin" task in the LIBERO kitchen, and an attempt to teach the missing word from
-phone videos of a real pan going onto a real stove.
+**A one-word test for robot foundation models, and teaching the missing word with a phone.**
 
-> Work in progress. Results below are preliminary and will be replaced by the final numbers.
+> 🚧 Work in progress. The numbers below are early results and will be updated.
 
-## The question
+---
 
-In LIBERO's kitchen scene (`KITCHEN_SCENE3`: a stove, a moka pot and a frying pan), the public
-`smolvla_libero` checkpoint was trained on one instruction only:
+## In plain words
 
-| | Instruction | Suite | Seen in training? |
-|---|---|---|---|
-| Trained | turn on the stove and put the **moka pot** on it | LIBERO-10, task 2 | yes |
-| Twin | turn on the stove and put the **frying pan** on it | LIBERO-90, task 21 | no |
+Modern robot "brains" called **vision-language-action models (VLAs)** take a camera image and a
+written instruction, and output arm motions. They score very well on the standard simulator
+benchmark **LIBERO**. But in LIBERO, every scene comes with exactly one instruction, so a model can
+score well **without reading the instruction at all**, just by recognising the scene and replaying
+the motion it memorised for it. Like a student who aces a familiar exam by remembering where the
+answers are, without reading the questions.
 
-The two task files are identical (same objects, same start regions, same fixed initial states)
-except for the goal and the object of interest. So if the policy reads the instruction, it should
-reach for the pan; if it replays what it memorised for this scene, it reaches for the moka pot.
+This project tests that with a **one-word change**, then tries to fix it using **videos I recorded
+with my phone in my own kitchen**.
+
+## The test: same kitchen, one word changed
+
+LIBERO has a kitchen with a stove, a moka pot and a frying pan. The public model
+[`smolvla_libero`](https://huggingface.co/HuggingFaceVLA/smolvla_libero) was trained in this
+kitchen with only one instruction:
+
+| | Instruction | Did the model train on it? |
+|---|---|---|
+| **Original** | "turn on the stove and put the **moka pot** on it" | ✅ yes |
+| **Twin** | "turn on the stove and put the **frying pan** on it" | ❌ never |
+
+Both tasks use the **exact same scene and starting positions**. Only the goal changes. So:
+
+- if the robot **reads** the instruction, it should pick up the **frying pan**;
+- if it **replays its memory** of this kitchen, it goes for the **moka pot**.
 
 ## Plan
 
-1. **Zero-shot:** run both instructions on the same scene and log what the robot actually does
-   (stove turned on? which object picked up first?).
-2. **Teach the twin from a phone:** film ~15-20 clips of putting a real pan on a real stove,
-   recover the pan's path from printed markers, replay it in LIBERO and expand it into robot
-   demonstrations, then fine-tune `smolvla_libero`.
-3. **Compare** against fine-tuning on the 50 human robot-teleop demos that LIBERO-90 ships for the
-   frying-pan task, using identical training settings.
-4. **Analyse** language following, success, and whether the original moka-pot skill is kept.
+```mermaid
+flowchart LR
+    A["1. Test as-is<br/>(original vs twin instruction)"] --> B["2. Film myself<br/>putting a pan on my stove"]
+    B --> C["3. Turn the clips into<br/>robot demos in the simulator"]
+    C --> D["4. Retrain the model<br/>(fine-tune)"]
+    D --> E["5. Test again:<br/>does it follow the words now?"]
+```
 
-## Preliminary results (zero-shot, `smolvla_libero`)
+1. **Test the model as-is** on both instructions and record what it actually does: does it turn
+   on the stove, and which object does it pick up?
+2. **Film myself** moving a real pan onto a real stove (~15-20 short clips, printed markers on
+   the counter and in the pan).
+3. **Convert the clips into robot demonstrations** inside the simulator (see
+   [How a phone clip becomes a robot demo](docs/how-it-works.md)).
+4. **Fine-tune** (briefly retrain) the model on those demos.
+5. **Test again**, and compare with the same model fine-tuned on 50 demos that a human recorded
+   by remote-controlling the simulated robot (LIBERO ships these for the twin task).
 
-| Run | Episodes | Success | Notes |
+## Results so far
+
+| Test | Tries | Success | What happened |
 |---|---|---|---|
-| Sanity: LIBERO-Object task 0 | 10 | 7/10 | setup check |
-| Moka pot (trained) | 3 | 2/3 | |
-| Frying pan (twin) | 10 | 0/10 | never picked up the pan; sometimes went for the moka pot; often missed the knob |
+| Easy sanity task (soup can into basket) | 10 | 7/10 | the setup works |
+| **Original**: "…put the moka pot on it" | 3 | 2/3 | does the task it was trained on |
+| **Twin**: "…put the frying pan on it" | 10 | **0/10** | never picked up the pan; sometimes went for the moka pot; often missed the stove knob |
 
-## Setup
+**Early takeaway:** change one word and the model does not follow it.
 
-Linux only (LIBERO). Tested with a LeRobot source build (0.6.2 dev) on Ubuntu 24.04, Python 3.12.
+## Run it yourself
+
+Linux only (LIBERO requirement). Tested on Ubuntu 24.04, Python 3.12, NVIDIA GPU.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install "lerobot[libero]"          # pin the exact commit used for the final results
+pip install "lerobot[libero]"
 python -c "import libero.libero"        # first run asks for a dataset path: answer n
 ```
 
-Checks:
+See the two kitchen tasks and a human demo:
 
 ```bash
-MUJOCO_GL=egl python scripts/check_kitchen_render.py   # renders both kitchen tasks
-MUJOCO_GL=egl python scripts/replay_demo.py --demo 0   # replays a LIBERO-90 frying-pan human demo
+MUJOCO_GL=egl python scripts/check_kitchen_render.py   # saves pictures of both tasks
+MUJOCO_GL=egl python scripts/replay_demo.py --demo 0   # replays a recorded human demo as a video
 ```
 
-## Evaluate
-
-`scripts/eval_with_log.py` is a drop-in for `lerobot-eval` that also logs, per episode, whether
-the stove was turned on and which object was picked up first.
+Test the model on the twin instruction, with a log of what the robot did in every try:
 
 ```bash
 MUJOCO_GL=egl python scripts/eval_with_log.py \
@@ -70,27 +92,38 @@ MUJOCO_GL=egl python scripts/eval_with_log.py \
   --output_dir=./eval_logs/pan_10ep
 ```
 
-Notes:
-- `--policy.n_action_steps=10 --policy.num_steps=10` matters: with the default 50-step chunks the
-  trained moka task also scored 0.
-- Episode limits are LeRobot's (520 steps for LIBERO-10, 400 for LIBERO-90, at 20 steps/s).
-- Saved videos play at 80 fps (4x real time); watch with `mpv --speed=0.25`.
+Use `--env.task=libero_10 --env.task_ids='[2]'` for the original moka-pot instruction.
 
-## Repository layout
+Good to know:
+- Keep `--policy.n_action_steps=10 --policy.num_steps=10`: the model re-plans every 10 steps.
+  With the default (50), it scored 0 even on the task it was trained on.
+- A try lasts at most 400 steps (twin) or 520 steps (original), at 20 steps per second of
+  simulated time.
+- Saved videos play 4x faster than real time; watch with `mpv --speed=0.25 <file>`.
 
-| Path | Contents |
+## What's in this repository
+
+| Path | What it is |
 |---|---|
-| `scripts/check_kitchen_render.py` | Render the two kitchen tasks |
-| `scripts/replay_demo.py` | Replay a LIBERO-90 frying-pan human demo to video |
-| `scripts/eval_with_log.py` | `lerobot-eval` + per-episode behaviour log |
-| `scripts/watch_eval.py` | `lerobot-eval` + live camera window |
-| `scripts/render_scenes.py`, `render_all_parallel.py`, `make_sheets.py` | Render the first frame of all 130 LIBERO tasks |
-| `scripts/make_markers.py`, `assets/markers_letter.pdf` | Printable ChArUco board + pan markers (US Letter) |
-| `docs/filming.md` | How to record the phone clips |
+| `scripts/check_kitchen_render.py` | Pictures of the two kitchen tasks |
+| `scripts/replay_demo.py` | Replays a recorded human demo of the twin task as a video |
+| `scripts/eval_with_log.py` | Runs the standard LeRobot test and logs what the robot did in each try |
+| `scripts/watch_eval.py` | Same test, with a live camera window |
+| `scripts/render_scenes.py`, `render_all_parallel.py`, `make_sheets.py` | Pictures of all 130 LIBERO tasks |
+| `scripts/make_markers.py`, `assets/markers_letter.pdf` | Printable markers for filming |
+| `docs/how-it-works.md` | How phone clips become robot demos, with references |
+| `docs/filming.md` | How the phone clips are recorded |
+
+## Glossary
+
+- **VLA (vision-language-action model):** a neural network that maps camera images + an
+  instruction to robot motions.
+- **LIBERO:** a robot simulator with 130 standard tasks, used to compare VLAs.
+- **Demo (demonstration):** a recording of a task being done: what the cameras saw and the arm
+  command at every step. Models learn by imitating demos.
+- **Zero-shot:** testing a model on something it was never trained on, without retraining it.
+- **Fine-tuning:** continuing to train an already-trained model on a small amount of new data.
 
 ## Related work
 
-LIBERO; LIBERO-PRO and LIBERO-Plus (robustness / language-perturbation studies of LIBERO-trained
-VLAs); LangGap (same-scene instruction changes on LIBERO Spatial/Object/Goal); GloVLA (geometric
-transport + local VLA); MimicGen (demo expansion); Real2Render2Real, X-Sim, H2RBench (learning
-robot policies from human video).
+See [docs/how-it-works.md](docs/how-it-works.md#references) for the full list.
