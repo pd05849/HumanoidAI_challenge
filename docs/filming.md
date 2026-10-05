@@ -7,8 +7,9 @@ grasp, and the stove knob is handled separately in simulation, so the stove need
 ## Match LIBERO's layout
 
 In LIBERO's kitchen, seen from where the robot stands, the **stove is on the robot's left** and
-the **pan starts on its right**, about 45 cm away. (LIBERO's videos are mirrored left-right, which
-is why the pan looks like it is on the right of the stove there too, but it is on the robot's right.)
+the **pan starts on its right**, about 45 cm away (measured in the simulator). LIBERO's videos are
+saved as mirror images, so when you watch them it looks as if the pan were on the robot's left;
+it is not.
 
 Standing at the counter facing the wall, set up the same way:
 
