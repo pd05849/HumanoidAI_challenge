@@ -115,6 +115,7 @@ Good to know:
 | `scripts/watch_eval.py` | Same test, with a live camera window |
 | `scripts/render_scenes.py`, `render_all_parallel.py`, `make_sheets.py` | Pictures of all 130 LIBERO tasks |
 | `scripts/make_markers.py`, `assets/markers_letter.pdf` | Printable markers for filming |
+| `scripts/check_markers.py` | Checks a test clip from the filming setup: are the board and the pan marker found? |
 | `sim/kitchen_controller.py` | Motion pieces in the simulator: knob turn, pan grasp, carry along a given path, place |
 | `sim/run_controller_eval.py` | Runs those pieces on LIBERO's start layouts and reports success |
 | `docs/how-it-works.md` | How phone clips become robot demos, with references |
