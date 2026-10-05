@@ -1,0 +1,16 @@
+# evaluation / training outputs
+eval_logs/
+outputs/
+*_episodes.jsonl
+live.jpg
+
+# large media and data (host on the Hugging Face Hub instead)
+*.mp4
+*.mov
+*.hdf5
+data/raw/
+
+# python
+__pycache__/
+*.pyc
+.venv/
