@@ -64,6 +64,10 @@ flowchart LR
 
 **Early takeaway:** change one word and the model does not follow it.
 
+**Can the robot physically do the twin task?** Yes: a hand-coded version of the motion pieces
+(turn the knob, grasp the pan handle, carry, place) succeeds in 10/10 official start layouts and
+10/10 more checked independently. These are the pieces that turn a phone clip into robot demos.
+
 ## Run it yourself
 
 Linux only (LIBERO requirement). Tested on Ubuntu 24.04, Python 3.12, NVIDIA GPU.
@@ -111,6 +115,8 @@ Good to know:
 | `scripts/watch_eval.py` | Same test, with a live camera window |
 | `scripts/render_scenes.py`, `render_all_parallel.py`, `make_sheets.py` | Pictures of all 130 LIBERO tasks |
 | `scripts/make_markers.py`, `assets/markers_letter.pdf` | Printable markers for filming |
+| `sim/kitchen_controller.py` | Motion pieces in the simulator: knob turn, pan grasp, carry along a given path, place |
+| `sim/run_controller_eval.py` | Runs those pieces on LIBERO's start layouts and reports success |
 | `docs/how-it-works.md` | How phone clips become robot demos, with references |
 | `docs/filming.md` | How the phone clips are recorded |
 

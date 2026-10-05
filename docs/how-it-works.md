@@ -45,22 +45,31 @@ The robot's action at each step is **7 numbers**: a small hand translation (x, y
 rotation (axis-angle), and the gripper (-1 open, +1 closed). LIBERO's built-in operational-space
 controller turns these into torques for the arm's 7 joints, so no joint angles are computed here.
 
-1. **Pan path → hand path.** While the pan is held, the gripper and pan move as one rigid
-   piece. So the hand pose the robot needs is the pan pose from the video composed with the fixed
-   grasp:
-   `T_world_hand(t) = T_world_pan(t) · T_pan_grasp`.
-2. **Segments.** The motion is split as in DemoGen: *free-space* parts (reach the knob, reach the
+1. **Pan path → hand path.** While the pan is held, the gripper and pan move (almost) as one
+   rigid piece, so the hand pose the robot needs is the pan pose from the video composed with the
+   grasp: `T_world_hand(t) = T_world_pan(t) · T_pan_grasp`. In practice the pan sags a little in
+   the grasp, so the controller steers on the **live pan pose** measured in the simulator: at each
+   step it moves the hand by however far the simulated pan is from where the video says it should
+   be. The path is given as a list of pan poses (x, y, z, yaw) relative to the stove.
+2. **Grasp and knob.** The grasp on the handle is chosen with a collision check so the robot's
+   wide hand does not land on the moka pot (a plain grasp collided in 8 of 10 start layouts). The
+   knob is turned by pushing its ridge sideways with the closed gripper.
+3. **Segments.** The motion is split as in DemoGen: *free-space* parts (reach the knob, reach the
    handle, retreat) are re-planned as smooth straight-line moves to the next segment's start;
    the *object* part (lift, carry, put down) is copied from the video, moved along with the
    objects.
-3. **Fitting a new layout** (MimicGen idea). When the pan or stove start elsewhere, the carry
+4. **Fitting a new layout** (MimicGen idea). When the pan or stove start elsewhere, the carry
    path is bent so it starts at the new pan pose and ends at the new burner, blending gradually
    from one correction to the other along the path; rotations are blended the same way.
-4. **Timing.** The phone path (30-60 frames/s) is resampled to the robot's 20 steps/s, with a
+5. **Timing.** The phone path (30-60 frames/s) is resampled to the robot's 20 steps/s, with a
    speed limit similar to LIBERO's human demos.
-5. **Tracking.** At every step a proportional controller converts "where the hand should be"
+6. **Tracking.** At every step a proportional controller converts "where the hand should be"
    minus "where it is" into the 7 action numbers (clipped to LIBERO's limits). The physics then
    runs, so the recorded actions are exactly what the robot really did.
+
+**Checked:** with a straight-line carry (no phone path yet), these motion pieces complete the
+twin task in **10/10** official start layouts, and **10/10** on another 10 layouts checked
+independently (`sim/kitchen_controller.py`, `sim/run_controller_eval.py`).
 
 This differs from Real2Render2Real, which also starts from phone captures but computes robot
 motion with kinematics only and renders it, without a physics engine. Here every generated demo
