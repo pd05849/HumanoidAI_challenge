@@ -39,6 +39,34 @@ The physics engine decides whether it worked, and LIBERO's own goal check ("stov
 the burner") labels success. While this runs, the simulator records the robot's camera images
 and the arm commands: **one robot demo, created from one phone clip.**
 
+#### How the arm's motion is computed
+
+The robot's action at each step is **7 numbers**: a small hand translation (x, y, z), a small hand
+rotation (axis-angle), and the gripper (-1 open, +1 closed). LIBERO's built-in operational-space
+controller turns these into torques for the arm's 7 joints, so no joint angles are computed here.
+
+1. **Pan path → hand path.** While the pan is held, the gripper and pan move as one rigid
+   piece. So the hand pose the robot needs is the pan pose from the video composed with the fixed
+   grasp:
+   `T_world_hand(t) = T_world_pan(t) · T_pan_grasp`.
+2. **Segments.** The motion is split as in DemoGen: *free-space* parts (reach the knob, reach the
+   handle, retreat) are re-planned as smooth straight-line moves to the next segment's start;
+   the *object* part (lift, carry, put down) is copied from the video, moved along with the
+   objects.
+3. **Fitting a new layout** (MimicGen idea). When the pan or stove start elsewhere, the carry
+   path is bent so it starts at the new pan pose and ends at the new burner, blending gradually
+   from one correction to the other along the path; rotations are blended the same way.
+4. **Timing.** The phone path (30-60 frames/s) is resampled to the robot's 20 steps/s, with a
+   speed limit similar to LIBERO's human demos.
+5. **Tracking.** At every step a proportional controller converts "where the hand should be"
+   minus "where it is" into the 7 action numbers (clipped to LIBERO's limits). The physics then
+   runs, so the recorded actions are exactly what the robot really did.
+
+This differs from Real2Render2Real, which also starts from phone captures but computes robot
+motion with kinematics only and renders it, without a physics engine. Here every generated demo
+is executed in LIBERO's physics and kept only if LIBERO's goal check passes, and the images are
+LIBERO's own renders, the same kind the model sees at test time.
+
 ### 5. Multiply
 The same clip is replayed from many different starting layouts (the objects shift slightly
 between tries). Because the motion is stored *relative to the pan and the stove*, it adapts to
