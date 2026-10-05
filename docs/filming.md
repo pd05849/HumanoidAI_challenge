@@ -48,7 +48,8 @@ bar measures 50 mm.
   about 75 cm above it (around eye level), **looking down about 50 degrees** (at least 40). From
   lower down, the pan's rim hides the marker.
 - Frame: the board fully in view near the left edge, the whole pan at its start spot near the
-  right edge (the end of the handle may be cut off), the microwave out of the picture.
+  right edge, the microwave out of the picture. The handle and your hand may be cut off: only the
+  board and the pan marker are tracked, and the marker must stay fully in the picture.
 - Stand on the handle side of the pan, not between the camera and the pan. Keep faces out of
   frame.
 - 1x lens, 1080p at 60 fps (30 is fine). On iPad/iPhone set Settings > Camera > Formats > Most
