@@ -21,6 +21,7 @@ that failed on replay, so expect fewer than 50 moka episodes (the script prints 
 """
 import argparse
 import json
+import re
 import shutil
 import sys
 from collections import Counter
@@ -28,6 +29,77 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import TASK_MOKA, json_default, normalize_task, read_info  # noqa: E402
+
+
+def repair_file_pointers(meta, ids):
+    """Point the selected episodes at the data files that really hold them.
+
+    HuggingFaceVLA/libero's meta/episodes was written for 69 data files, but its data was later
+    re-split into ~100 MB files (the images are stored inside them, 377 files) without updating
+    data/file_index: e.g. episode 6 is listed in file-000, which holds episodes 0-2 only. LeRobot
+    then downloads the wrong files and fails with 'Instruction "train" corresponds to no data'.
+    The episodes' global row ranges (dataset_from_index/to_index) are right and each file holds
+    whole episodes, so the real file of an episode follows from the files' row counts, read from
+    their parquet footers (a few KB each). Patches the local copy of meta/episodes and returns True
+    if anything changed; a dataset whose pointers are already right is left alone."""
+    import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from huggingface_hub import HfFileSystem
+
+    eps = meta.episodes.to_pandas() if hasattr(meta.episodes, "to_pandas") else pd.DataFrame(meta.episodes)
+    eps = eps.set_index("episode_index", drop=False)
+    fs = HfFileSystem()
+    base = f"datasets/{meta.repo_id}@{meta.revision}" if meta.revision else f"datasets/{meta.repo_id}"
+    files = sorted(fs.glob(f"{base}/data/chunk-*/file-*.parquet"),
+                   key=lambda p: tuple(int(x) for x in re.findall(r"(\d+)", p.rsplit("/data/", 1)[1])))
+    if not files:
+        print("  (cannot list the source's data files; trusting meta/episodes)")
+        return False
+
+    def rows(path):
+        with fs.open(path, "rb", block_size=1 << 16) as f:
+            return pq.ParquetFile(f).metadata.num_rows
+
+    def chunk_file(path):
+        c, f = re.findall(r"(\d+)", path.rsplit("/data/", 1)[1])
+        return int(c), int(f)
+
+    first = eps[(eps["data/chunk_index"] == chunk_file(files[0])[0]) & (eps["data/file_index"] == chunk_file(files[0])[1])]
+    if len(first) and int(first["dataset_to_index"].max()) == rows(files[0]):
+        return False                                    # pointers consistent with the files
+    need = int(eps.loc[ids, "dataset_to_index"].max())
+    print(f"  meta/episodes points at the wrong data files; reading the row counts of the real "
+          f"{len(files)} files to fix it (up to row {need})")
+    ranges, start = [], 0
+    for path in files:
+        n = rows(path)
+        ranges.append((start, start + n, *chunk_file(path)))
+        start += n
+        if start >= need:
+            break
+    fixed = 0
+    for i in ids:
+        lo, hi = int(eps.loc[i, "dataset_from_index"]), int(eps.loc[i, "dataset_to_index"])
+        hit = [r for r in ranges if r[0] <= lo and hi <= r[1]]
+        if not hit:
+            raise SystemExit(f"episode {i} (rows {lo}-{hi}) is not inside a single data file; download the "
+                             f"whole source dataset instead (huggingface-cli download {meta.repo_id} "
+                             f"--repo-type dataset --local-dir {meta.root})")
+        c, f = hit[0][2], hit[0][3]
+        if (int(eps.loc[i, "data/chunk_index"]), int(eps.loc[i, "data/file_index"])) != (c, f):
+            eps.loc[i, "data/chunk_index"], eps.loc[i, "data/file_index"] = c, f
+            fixed += 1
+    # write the patched rows back into the local meta/episodes parquet file(s), schema unchanged
+    for p in sorted((Path(meta.root) / "meta" / "episodes").glob("*/*.parquet")):
+        t = pq.read_table(p)
+        df = t.to_pandas()
+        sel = df["episode_index"].isin(ids)
+        for col in ("data/chunk_index", "data/file_index"):
+            df.loc[sel, col] = eps.loc[df.loc[sel, "episode_index"], col].to_numpy()
+        pq.write_table(pa.Table.from_pandas(df, schema=t.schema, preserve_index=False), p)
+    print(f"  fixed the data-file pointer of {fixed} of {len(ids)} selected episodes")
+    return fixed > 0
 
 
 def main():
@@ -101,7 +173,18 @@ def main():
         shutil.rmtree(out)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    # Downloads only the parquet/mp4 files that hold these episodes.
+    # Downloads only the parquet/mp4 files that hold these episodes (after checking that the
+    # metadata really says which files those are).
+    if repair_file_pointers(meta, ids):
+        meta = LeRobotDatasetMetadata(args.repo_id, root=src_root, revision=args.revision)
+    # Fetch exactly those files first: LeRobot loads whatever data files are already on disk and,
+    # if none of them holds the requested episodes, fails instead of downloading the right ones.
+    from huggingface_hub import snapshot_download
+    need = {str(meta.get_data_file_path(i)) for i in ids}
+    need |= {str(meta.get_video_file_path(i, k)) for i in ids for k in meta.video_keys}
+    snapshot_download(args.repo_id, repo_type="dataset", revision=meta.revision, local_dir=meta.root,
+                      allow_patterns=sorted(need))
+    print(f"  {len(need)} source files on disk for these episodes")
     src = LeRobotDataset(args.repo_id, root=src_root, episodes=ids, revision=args.revision)
     # split_dataset writes <output_dir>/<split name>; videos shared with other episodes are re-encoded
     # with the source's own encoder settings, everything else is copied as is.
