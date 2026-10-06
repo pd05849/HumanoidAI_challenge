@@ -682,8 +682,9 @@ def main():
     if args.workers > 1:
         import concurrent.futures as cf
         import multiprocessing as mp
-        with cf.ProcessPoolExecutor(args.workers, mp_context=mp.get_context("spawn"),
-                                    max_tasks_per_child=4) as ex:
+        # no max_tasks_per_child: with it, Python 3.11's executor stopped replacing finished
+        # workers and the run hung (each job builds and closes its own env)
+        with cf.ProcessPoolExecutor(args.workers, mp_context=mp.get_context("spawn")) as ex:
             running = {}
             while True:
                 for jb in next_jobs():
