@@ -53,6 +53,12 @@ def main():
     from lerobot.datasets.utils import create_lerobot_dataset_card
 
     root = Path(args.root).resolve()
+    if not (root / "meta" / "info.json").exists():
+        found = sorted(p.name for p in root.iterdir()) if root.is_dir() else None
+        raise SystemExit(f"{root} is not a complete LeRobot dataset (no meta/info.json). "
+                         + (f"It contains: {found}. " if found is not None else "The folder does not exist. ")
+                         + "If it comes from the Humanoid_clips repo: wait for the clone to finish, then in that "
+                           "repo run 'git pull' and 'git sparse-checkout disable'.")
     info = json.load(open(root / "meta" / "info.json"))
     report = root.parent / f"{root.name}_report.json"
     n_takes = len(json.load(open(report)).get("per_take", {})) if report.exists() else "17"
