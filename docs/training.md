@@ -167,6 +167,20 @@ episodes, taking them round-robin over the takes, so P and T have the same numbe
 episodes. If there are fewer phone episodes than teleop ones, either generate more layouts
 (the README's `sim/make_demos.py ... --layouts 3 --speedup 1.5 --max-steps 400` with a new `--seed`) or cap the teleop demos with `TELEOP_ARGS="--demos 0-<N-1>"`.
 
+**Teleop vs phone demos, side by side (2 min, optional but worth it for the README):**
+
+```bash
+python scripts/compare_demos.py --teleop outputs/datasets/teleop_pan \
+    --phone outputs/datasets/phone_pan --out docs/img/teleop_vs_phone
+```
+
+It writes `docs/img/teleop_vs_phone.gif` (+ `.mp4`): one teleop demo and one phone-derived demo
+playing side by side, both cameras as the model sees them; `teleop_vs_phone_paths.png`: every
+demo's gripper path (top view and height over time), one column per dataset; and
+`teleop_vs_phone.md`: a caption and a table (duration, time with the pan in hand, lift, speed,
+smoothness of the commands). Alternatively push `outputs/datasets/teleop_pan` to the clips repo
+(`datasets/teleop_pan`) and the comparison is made from there.
+
 ## 3. Train (2-4 h per run)
 
 First a short timing run:
