@@ -33,10 +33,10 @@ PHONE_ALL_DATASET=$CLIPS/datasets/phone_pan_all \
   bash train/build_datasets.sh
 ```
 
-They were written with `fps = 10`, the value the LeRobot LIBERO datasets are believed to use. If
-the moka subset turns out to use another fps label or video codec, the build script re-writes the
-phone datasets in moka's format by itself (`train/conform_dataset.py`, a few minutes; it prints
-"re-writing ... in moka's format").
+They were written with `fps = 10`, the same label as `HuggingFaceVLA/libero` (checked). That
+dataset stores its camera frames as images inside the parquet files rather than as videos, so the
+build script re-writes the phone datasets in moka's format by itself (`train/conform_dataset.py`;
+it prints "re-writing ... in moka's format" and takes a few minutes for `phone_pan_all`).
 If the DGX Spark (ARM) cannot run the LIBERO simulator, build the datasets on the RTX machine
 (step (b) re-renders the teleop demos in LIBERO), copy `outputs/datasets/` to the Spark, train
 there, and evaluate on the RTX machine: training only needs the datasets. Use the same `STEPS`
@@ -73,7 +73,8 @@ cd /path/to/humanoidai_challenge
 ```
 
 `lerobot-train` refuses to start without `accelerate` (the `training` extra). Free disk needed:
-about 5 GB (source dataset files, the teleop HDF5, four small datasets, two checkpoints).
+about 15 GB: 3.1 GB of `HuggingFaceVLA/libero` files for the moka subset, the 1.4 GB teleop HDF5,
+the datasets (images stored inside the parquet files make them several GB) and the checkpoints.
 
 ## 1. Checks that could not be done in the build container (5 min)
 
@@ -267,8 +268,14 @@ tells whether it kept the original task (fine-tuning on two tasks can trade one 
 ## 5. How the data is made
 
 **Moka subset (a).** The episodes whose task string is "turn on the stove and put the moka pot on
-it" are found in the source's `meta/episodes`, only the files holding them are downloaded, and
-LeRobot's own `split_dataset` writes them out (same features, fps, encoder, per-episode stats).
+it" are found in the source's `meta/episodes` (41 of them: the OpenVLA-regenerated data dropped
+demos that failed on replay), only the files holding them are downloaded (35 files, 3.1 GB), and
+LeRobot's own `split_dataset` writes them out (same features, fps, per-episode stats).
+`HuggingFaceVLA/libero`'s `meta/episodes` points most episodes at the wrong data file (it was
+written for 69 files; the data was later re-split into 377 files of ~100 MB without updating it),
+so the script first reads the real files' row counts (parquet footers) and corrects the pointers
+of the selected episodes in its local copy; otherwise LeRobot fetches the wrong files and fails
+with `Instruction "train" corresponds to no data`.
 
 **Teleop demos (b).** The LIBERO HDF5 (`yifengzhu-hf/LIBERO-datasets`, the same file
 `scripts/replay_demo.py` uses) has 128x128 images, so every demo is re-rendered at 256x256:
@@ -355,7 +362,12 @@ with SmolVLA's 50-step action chunks, three `lerobot-train` steps of a small pol
 checkpoint carries the pinned stats), and the eval summary on synthetic logs. The 8-D state
 conversion matches `LiberoProcessorStep` on float64 eval observations bit for bit.
 
-Not tested (no Hub access, no GPU): downloading `HuggingFaceVLA/libero`, `smolvla_libero` and the
-real teleop HDF5 (whether every demo has `model_file`, how many action replays succeed); SmolVLA
-training itself (memory, speed); evaluation of fine-tuned checkpoints. Section 1 covers the
+Tested later with Hub access, on the real data: `make_moka_subset.py` on `HuggingFaceVLA/libero`
+(a 2-episode subset; this found and fixed the wrong file pointers above), the teleop converter on
+the real frying-pan HDF5, and `build_datasets.sh` end to end on that 2-episode moka subset, 2 real
+teleop demos and small phone datasets (phone sets re-written in moka's image format, T/P/Pall
+merged, stats pinned from the real `smolvla_libero`, merged sets loaded with 50-step action
+chunks).
+
+Not tested (no GPU): SmolVLA training itself (memory, speed); evaluation of fine-tuned checkpoints. Section 1 covers the
 checks for these.
