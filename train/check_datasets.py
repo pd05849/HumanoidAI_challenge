@@ -133,7 +133,7 @@ def main():
             s["numeric"] = numeric_summary(root, info)
         summary.append(s)
 
-        print(f"\n== {root}  (v{s['codebase_version']}, fps {s['fps']}, robot_type {s['robot_type']}, "
+        print(f"\n== {root}  ({s['codebase_version']}, fps {s['fps']}, robot_type {s['robot_type']}, "
               f"{s['total_episodes']} episodes, {s['total_frames']} frames, stats.json {s['has_stats']})")
         for t, c in task_counts.items():
             print(f"   task: {c:3d} x {t!r}")

@@ -246,7 +246,16 @@ def harmonize_info(root, schema: Schema) -> list[str]:
     root = Path(root)
     info = read_info(root)
     ref_feats = schema.ref_info["features"]
+    if int(info["fps"]) != int(schema.ref_info["fps"]):
+        raise SystemExit(f"{root}: fps {info['fps']} != reference fps {schema.ref_info['fps']}; timestamps "
+                         f"cannot be relabelled, rebuild it with --like / --fps {schema.ref_info['fps']}")
+    missing = [k for k in schema.key_map.values() if k not in info["features"]]
+    if missing:
+        raise SystemExit(f"{root}: no features {missing} (has {list(info['features'])})")
     changed = []
+    if info.get("robot_type") != schema.ref_info.get("robot_type"):   # metadata only
+        info["robot_type"] = schema.ref_info.get("robot_type")
+        changed.append("robot_type")
     keys = list(schema.key_map.values()) + [k for k in LEROBOT_DEFAULT_KEYS
                                             if k in ref_feats and k in info["features"]]
     for key in keys:
