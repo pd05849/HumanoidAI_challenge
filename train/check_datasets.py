@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import compare_features, read_info  # noqa: E402
+from common import compare_features, harmonize_info, read_info, schema_from_like  # noqa: E402
 
 
 def load_frames_table(root: Path):
@@ -93,9 +93,15 @@ def main():
     ap.add_argument("--png", default=None, help="save a side-by-side preview image")
     ap.add_argument("--json", default=None, help="save the summary as JSON")
     ap.add_argument("--no-stats", action="store_true", help="skip reading the parquet data")
+    ap.add_argument("--harmonize", action="store_true",
+                    help="make the metadata of datasets 2..N match the first one (see above)")
     args = ap.parse_args()
 
     roots = [Path(r) for r in args.roots]
+    if args.harmonize:
+        schema = schema_from_like(roots[0])
+        for r in roots[1:]:
+            print(f"harmonize {r}: changed {harmonize_info(r, schema) or 'nothing'}")
     infos = [read_info(r) for r in roots]
     ref = infos[0]
     ok, summary = True, []

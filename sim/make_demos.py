@@ -508,16 +508,18 @@ def make_paths_figure(metas, png, max_eps=6):
         ax.set_xlabel("time from carry start (s)")
         if j == 0:
             ax.set_ylabel("pan height above stove (cm)")
-        ax.set_ylim(-2, 24)
+        ztop = max(W[:, 2].max(), pan[sel, 2].max() if sel.any() else 0.0) * 100
+        ax.set_ylim(-2, max(24.0, np.ceil(ztop / 2.0) * 2.0 + 2.0))
         ax.grid(color=GRID, lw=0.8)
         for a in axes[:, j]:
             for sp in ("top", "right"):
                 a.spines[sp].set_visible(False)
     h, l = axes[0, 0].get_legend_handles_labels()
     h2, l2 = axes[1, 0].get_legend_handles_labels()
-    fig.legend(h + h2[:1], l + l2[:1], loc="upper right", ncol=3, frameon=False, fontsize=8.5)
-    fig.suptitle(f"Phone-tracked pan paths replayed in LIBERO-90 task 21 ({TASK})", x=0.01, ha="left",
-                 fontsize=11, color=INK)
+    fig.suptitle(f"Phone-tracked pan paths replayed in LIBERO-90 task 21 ({TASK})", x=0.01, y=1.06,
+                 ha="left", fontsize=11, color=INK)
+    fig.legend(h + h2[:1], l + l2[:1], loc="lower left", bbox_to_anchor=(0.01, 0.985), ncol=3, frameon=False,
+               fontsize=8.5)
     fig.savefig(png, dpi=110, bbox_inches="tight")
     plt.close(fig)
     return True

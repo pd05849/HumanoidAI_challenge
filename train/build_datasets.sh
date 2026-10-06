@@ -8,8 +8,10 @@
 #       then the normalization stats of P and T are pinned to smolvla_libero's own (PIN_STATS=1).
 #
 # Usage (repo root, LeRobot env with lerobot[libero,smolvla], GPU machine):
-#   PHONE_DEMOS=/path/to/make_demos_out bash train/build_datasets.sh
-# Without PHONE_DEMOS, only moka, teleop_pan and T are built (run it again later for P).
+#   PHONE_DEMOS=/path/to/make_demos_out bash train/build_datasets.sh      # npz episodes (sim/make_demos.py)
+#   PHONE_DATASET=/path/to/phone_pan bash train/build_datasets.sh         # or a LeRobot dataset built
+#                                       elsewhere with train/convert_phone_npz.py (same fps as moka!)
+# Without either, only moka, teleop_pan and T are built (run it again later for P).
 # Steps whose output folder already exists are skipped; REBUILD=1 rebuilds everything.
 #
 # Environment knobs:
@@ -25,6 +27,7 @@ POLICY=${POLICY:-HuggingFaceVLA/smolvla_libero}
 PIN_STATS=${PIN_STATS:-1}
 MATCH_COUNTS=${MATCH_COUNTS:-1}
 PHONE_DEMOS=${PHONE_DEMOS:-}
+PHONE_DATASET=${PHONE_DATASET:-}
 PY=${PY:-python}
 export MUJOCO_GL=${MUJOCO_GL:-egl}
 mkdir -p "$DATA" "$DATA/logs"
@@ -60,8 +63,17 @@ if [[ -n "$PHONE_DEMOS" ]]; then
     $PY train/convert_phone_npz.py $PHONE_DEMOS --like "$DATA/moka" --out "$DATA/phone_pan" --overwrite \
         ${CAP[@]+"${CAP[@]}"} ${PHONE_ARGS:-} 2>&1 | tee "$DATA/logs/phone_pan.log"
   fi
+elif [[ -n "$PHONE_DATASET" ]]; then
+  echo "== (c) phone-derived dataset from $PHONE_DATASET"
+  if have "$DATA/phone_pan"; then echo "   exists, skipped"; else
+    safe_rm "$DATA/phone_pan"
+    cp -r "$PHONE_DATASET" "$DATA/phone_pan"
+    # metadata only (names, info keys, robot_type); refuses if fps/shapes/streams differ
+    $PY train/check_datasets.py "$DATA/moka" "$DATA/phone_pan" --harmonize --no-stats \
+        2>&1 | tee "$DATA/logs/phone_pan.log"
+  fi
 else
-  echo "== (c) PHONE_DEMOS not set: phone demos and run P skipped for now"
+  echo "== (c) neither PHONE_DEMOS nor PHONE_DATASET set: phone demos and run P skipped for now"
 fi
 
 SOURCES=("$DATA/moka" "$DATA/teleop_pan")
