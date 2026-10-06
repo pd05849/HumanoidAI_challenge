@@ -6,11 +6,18 @@ grasp, and the stove knob is handled separately in simulation, so the stove need
 
 ![Filming layout: top view, side view, and what the camera should see](img/filming_layout.png)
 
+> **As recorded (differs from the plan below in places):** 18 takes of 18-22 s each (Demo1-9 at
+> 60 fps, Demo11-19 at 30 fps; Demo10 was not kept). The iPad ended up about 0.9 m above the
+> cooktop looking down only ~34° (the plan says ~50°, at least 40), so the pan's rim partly hid the
+> marker and the tracker's template-matching step was needed. The lifts were 20-25 cm and the
+> carries 7-11 s, higher and slower than planned: a first test clip with an 11 cm lift came too
+> close to the simulator's 15 cm moka pot. The figure shows the plan.
+
 ## Match LIBERO's layout
 
 In LIBERO's kitchen, seen from where the robot stands, the **stove is on the robot's left** and
 the **pan starts on its right**, about 45 cm away (measured in the simulator). LIBERO's videos are
-saved as mirror images, so when you watch them it looks as if the pan were on the robot's left;
+saved mirrored left-right, so when you watch them it looks as if the pan were on the robot's left;
 it is not.
 
 Standing at the counter facing the wall, set up the same way:
@@ -59,11 +66,14 @@ bar measures 50 mm.
 
 ## Calibration clip (once, before the takes)
 
-With the camera already in its final place and locked, record 20-30 s while **holding the
-board** (by the white margins, fingers off the squares) about where the pan will be. Slowly tilt
-it in different directions and move it into all four corners of the picture. Then lay it on the
-front-left burner and tape it down. This clip measures the camera's lens; the camera itself must
-not move afterwards.
+With the camera already in its final place and locked, record 20-30 s while **holding a
+board** (by the white margins, fingers off the squares) about where the pan will be: the same print
+before you tape it down, or a second print of page 1 (if the taped board is also in view,
+`scripts/calibrate_camera.py` keeps only the larger, held copy). Slowly tilt it in different
+directions and move it into all four corners of the picture, including the edges. Record it in the
+same video mode as the takes (lens, resolution, frame rate). This clip measures the camera's lens:
+keep the lens, zoom and focus lock afterwards. The camera must not move *during* a take; its pose is
+measured again from the taped board in every clip.
 
 ## Check the setup (1 minute)
 
@@ -86,5 +96,5 @@ before recording the takes.
 4. Put the pan back on the counter, shifting its start a few cm each time (within about 5 cm)
    and turning the handle a little.
 
-One clip per take (`clip_01.mov`, `clip_02.mov`, ...) or one continuous recording of all the
-takes both work: moves back to the counter are recognised and skipped.
+Record one clip per take (`Demo1.mov`, `Demo2.mov`, ...): `scripts/track_pan.py` expects exactly
+one carry per clip (rest, one lift, rest).

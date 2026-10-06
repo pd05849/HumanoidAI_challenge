@@ -19,25 +19,29 @@ asks what multiplying 20 minutes of video into more demos buys.
 | 1 | setup + checks (sections 0-1) | setup + checks (sections 0-1) |
 | 2 | build datasets (section 2) | build datasets (section 2) |
 | 3 | `bash train/train.sh Pall` | `bash train/train.sh T` |
-| 4 | `bash train/eval.sh .../Pall/... Pall` | `bash train/eval.sh .../T/... T`, then `bash train/eval.sh HuggingFaceVLA/smolvla_libero base` |
-| 5 | whichever is free first: `bash train/train.sh P`, then `bash train/eval.sh .../P/... P` | |
+| 4 | `bash train/eval.sh outputs/train/Pall/checkpoints/last/pretrained_model Pall` | `bash train/eval.sh outputs/train/T/checkpoints/last/pretrained_model T`, then `bash train/eval.sh HuggingFaceVLA/smolvla_libero base` |
+| 5 | whichever is free first: `bash train/train.sh P`, then `bash train/eval.sh outputs/train/P/checkpoints/last/pretrained_model P` | |
+| 6 | collect all `eval_logs/` on one machine: `python train/summarize_evals.py eval_logs --names base T P Pall --md eval_logs/summary.md` | |
 
 The phone-derived datasets are built in the cloud session and arrive with the private clips repo:
 
 ```bash
-git -C ../Humanoid_clips pull          # datasets/phone_pan_P (count-matched) and datasets/phone_pan_all
-PHONE_DATASET=../Humanoid_clips/datasets/phone_pan_P \
-PHONE_ALL_DATASET=../Humanoid_clips/datasets/phone_pan_all \
+CLIPS=../Humanoid_clips                # wherever the private clips repo is cloned
+git -C $CLIPS pull                     # datasets/phone_pan_P (count-matched) and datasets/phone_pan_all
+PHONE_DATASET=$CLIPS/datasets/phone_pan_P \
+PHONE_ALL_DATASET=$CLIPS/datasets/phone_pan_all \
   bash train/build_datasets.sh
 ```
 
 They were written with `fps = 10`, the value the LeRobot LIBERO datasets are believed to use. If
 the build stops with an fps mismatch, check `meta/info.json` of the moka subset and ask for the
 phone datasets to be rewritten with its fps (the source episodes are kept for that).
-If the DGX Spark (ARM) cannot run the LIBERO simulator, train there and evaluate on the RTX
-machine: training only needs the datasets. Use the same `STEPS` and `BATCH` for every run.
+If the DGX Spark (ARM) cannot run the LIBERO simulator, build the datasets on the RTX machine
+(step (b) re-renders the teleop demos in LIBERO), copy `outputs/datasets/` to the Spark, train
+there, and evaluate on the RTX machine: training only needs the datasets. Use the same `STEPS`
+and `BATCH` for every run.
 
-Both start from `HuggingFaceVLA/smolvla_libero`, use the same steps, batch size, seed, learning-rate
+All three runs start from `HuggingFaceVLA/smolvla_libero`, use the same steps, batch size, seed, learning-rate
 schedule and normalization statistics, and are evaluated, together with the untouched model, on
 both instructions in the same kitchen (LIBERO-90 task 21 and LIBERO-10 task 2, all 50 start
 layouts each).
@@ -50,8 +54,11 @@ flowchart LR
     A["(a) moka subset<br/>HuggingFaceVLA/libero"] --> P["run P dataset"]
     A --> T["run T dataset"]
     B["(b) 50 teleop demos<br/>LIBERO HDF5, re-rendered"] --> T
+    A --> PA["run Pall dataset"]
     C["(c) phone-derived demos<br/>sim/make_demos.py"] --> P
-    P --> TP["fine-tune P"] --> E["eval: both instructions<br/>base vs P vs T"]
+    C --> PA
+    P --> TP["fine-tune P"] --> E["eval: both instructions<br/>base vs T vs P vs Pall"]
+    PA --> TPA["fine-tune Pall"] --> E
     T --> TT["fine-tune T"] --> E
 ```
 
@@ -96,7 +103,7 @@ What to expect, and what to do otherwise:
 
 | Check | Expected | If not |
 |---|---|---|
-| policy inputs | `observation.images.image` and `observation.images.image2` (3x256x256), `observation.state` (8) | pass `--rename_map='{"<dataset key>": "<policy key>"}'` as an extra argument to `train/train.sh` (after the tag) and `train/eval.sh` (after the name) |
+| policy inputs | `observation.images.image` and `observation.images.image2` (3x256x256), `observation.state` (8) | pass `--rename_map='{"<dataset key>": "<policy key>"}'` as an extra argument to `train/train.sh` after the tag (`bash train/train.sh P "" --rename_map='{...}'`; pass `""` when there is no tag) and to `train/eval.sh` after the name |
 | policy output | `action` (7) | stop: the recipe assumes LIBERO's 7-D action |
 | source `fps` | probably 10 (inherited from `physical-intelligence/libero`), maybe 20 | nothing: the converters copy the source's fps label automatically. One dataset frame is always one 20 Hz control step, and SmolVLA's action chunk is counted in frames, so the label does not change what is learned |
 | source features | the four keys above plus LeRobot's index columns | an extra feature makes the merge refuse: drop it from the moka subset with `lerobot-edit-dataset --operation.type remove_feature` |
@@ -118,7 +125,7 @@ the phone demos are not ready yet, leave it out: the script builds the moka subs
 dataset and run T, and skips run P; run it again later with `PHONE_DEMOS` set (finished steps are
 skipped; `REBUILD=1` redoes everything).
 
-If the npz episodes live on another machine (they are ~50 MB each), convert them there and copy
+If the npz episodes live on another machine (they are ~35 MB each), convert them there and copy
 only the LeRobot dataset (~2 MB per episode): `python train/convert_phone_npz.py MAKE_DEMOS_OUT
 --fps <the source fps from step 1> --max-episodes 50 --out phone_pan`, then pass
 `PHONE_DATASET=/path/to/phone_pan` instead of `PHONE_DEMOS`. The build script fixes the metadata
@@ -167,14 +174,16 @@ STEPS=200 SAVE_FREQ=200 bash train/train.sh P smoke
 
 The log prints every 100 steps a line with `updt_s` (time per update) and `data_s` (time waiting
 for data). Choose `STEPS` so that `STEPS x (updt_s + data_s)` fits the time you have (2-4 h), round
-it to a multiple of `SAVE_FREQ`, and use **the same value for both runs**. The default, 20 000
+it to a multiple of `SAVE_FREQ`, and use **the same value for every run**. The default, 20 000
 steps at batch 32 (about 25 passes over ~25k frames), takes about 2 h at 0.35 s/step. If
 `data_s` is large, raise `NUM_WORKERS`; if the GPU runs out of memory, use `BATCH=16` and twice
-the steps. Then:
+the steps. Pall's dataset is about twice as large as P's or T's, so at the same number of steps
+it sees each frame about half as often; mention this when comparing Pall with P. Then:
 
 ```bash
-STEPS=20000 bash train/train.sh P      # -> outputs/train/P/checkpoints/{005000,...,last}/pretrained_model
-STEPS=20000 bash train/train.sh T      # -> outputs/train/T/...
+STEPS=20000 bash train/train.sh T      # -> outputs/train/T/checkpoints/{005000,...,last}/pretrained_model
+STEPS=20000 bash train/train.sh P      # -> outputs/train/P/...
+STEPS=20000 bash train/train.sh Pall   # -> outputs/train/Pall/...
 ```
 
 With two GPUs they can run side by side: `CUDA_VISIBLE_DEVICES=0 bash train/train.sh P &` and
@@ -208,7 +217,8 @@ lerobot-train \
 bash train/eval.sh HuggingFaceVLA/smolvla_libero base
 bash train/eval.sh outputs/train/P/checkpoints/last/pretrained_model P
 bash train/eval.sh outputs/train/T/checkpoints/last/pretrained_model T
-python train/summarize_evals.py eval_logs --names base P T --md eval_logs/summary.md
+bash train/eval.sh outputs/train/Pall/checkpoints/last/pretrained_model Pall
+python train/summarize_evals.py eval_logs --names base T P Pall --md eval_logs/summary.md
 ```
 
 Each call runs `scripts/eval_with_log.py` (= `lerobot-eval` plus the per-episode log) twice:
@@ -271,9 +281,10 @@ LeRobot's own `split_dataset` writes them out (same features, fps, encoder, per-
 `train/convert_phone_npz.py` keeps kept, successful episodes not generated on eval layouts,
 trims each to 10 frames after the first success (LIBERO's teleop demos also end right after
 success, and an eval episode stops at it), recomputes the state from the raw robot state when the
-npz has it, and writes them. (`sim/write_lerobot_dataset.py` from the demo generator writes the
-same dataset with an extra reload check; either works, the build script uses
-`train/convert_phone_npz.py`.)
+npz has it, and writes them; `--max-episodes N` takes N episodes round-robin over the takes (this
+is how `phone_pan_P` is capped to the teleop count). `sim/write_lerobot_dataset.py` is a second
+writer with an extra reload check, but its defaults differ (keeps the frames after success, takes
+the first N episodes); the datasets used for training are written with `train/convert_phone_npz.py`.
 
 **Merging (d).** LeRobot only merges datasets with the same fps, robot_type and feature
 definitions. Both converters therefore copy them from the moka subset (`--like`), encode the
