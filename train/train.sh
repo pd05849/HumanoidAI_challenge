@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# Fine-tune smolvla_libero on one of the merged datasets. Identical settings for P and T.
+# Fine-tune smolvla_libero (starting from its trained weights) on one of the merged datasets.
+# Identical settings for T, P and Pall.
 #
 # Usage (repo root, LeRobot env, GPU):
 #   bash train/train.sh P            # -> outputs/train/P
 #   bash train/train.sh T            # -> outputs/train/T
+#   bash train/train.sh Pall         # -> outputs/train/Pall
 #   STEPS=200 SAVE_FREQ=200 bash train/train.sh P smoke   # timing test -> outputs/train/P_smoke
 # Extra lerobot-train flags can follow the tag: bash train/train.sh P "" --policy.use_amp=true
 #
-# Knobs (keep them the same for both runs): STEPS=20000 BATCH=32 SAVE_FREQ=5000 SEED=1000
+# Knobs (keep them the same for every run): STEPS=20000 BATCH=32 SAVE_FREQ=5000 SEED=1000
 #   NUM_WORKERS=8 DATA=outputs/datasets POLICY=HuggingFaceVLA/smolvla_libero WANDB=false
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-RUN=${1:?usage: train/train.sh P|T [tag] [extra lerobot-train flags]}
+RUN=${1:?usage: train/train.sh T|P|Pall [tag] [extra lerobot-train flags]}
 TAG=${2:-}
 shift $(( $# >= 2 ? 2 : 1 ))
 DATA=${DATA:-outputs/datasets}
