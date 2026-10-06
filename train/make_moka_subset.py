@@ -83,7 +83,7 @@ def main():
         sel = sel[:args.max_episodes]
     ids = [i for i, _ in sel]
     lens = [n for _, n in sel]
-    print(f"selected {len(ids)} episodes of {args.task!r}: {len(ids)} episodes, {sum(lens)} frames, "
+    print(f"selected {len(ids)} episodes of {args.task!r}, {sum(lens)} frames, "
           f"length min/median/max {min(lens)}/{sorted(lens)[len(lens) // 2]}/{max(lens)}")
     print(f"  source episode indices: {ids}")
     if len(ids) != 50:

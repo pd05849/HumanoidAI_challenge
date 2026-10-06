@@ -42,7 +42,8 @@ def _fetch(policy: str, filename: str) -> Path:
 
 
 def policy_norm_stats(policy: str, config_filename: str = "policy_preprocessor.json") -> dict:
-    """{feature: {stat: np.ndarray}} from the policy's normalizer_processor step."""
+    """({feature: {stat: np.ndarray}}, norm_map, state file name) from the policy's
+    normalizer_processor step."""
     from safetensors.numpy import load_file
     cfg_path = _fetch(policy, config_filename)
     with open(cfg_path) as f:

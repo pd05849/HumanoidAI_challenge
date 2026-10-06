@@ -7,7 +7,11 @@ individual .npz files. Per episode, sim/make_demos.py already stores what lerobo
 policy (see its docstring): image/image2 (T,256,256,3) uint8 rotated 180 deg, state (T,8) float32
 [eef_pos, axis-angle, gripper_qpos], action (T,7) float32, no-op frames dropped, one frame per
 20 Hz control step; the .json has kept/success/task/first_success_frame. Only kept, successful
-episodes are used.
+episodes are used, and not those generated on the eval init states (states_from == "eval": the
+test layouts) unless --allow-eval-layouts. When the npz also has the raw robot state
+(eef_pos_raw, eef_quat_raw, gripper_qpos_raw), observation.state is recomputed from it with
+LeRobot's own LiberoProcessorStep conversion (bit-identical to eval) and checked against the
+stored one.
 
 Trimming: make_demos.py records idle steps after the pan is released. The LIBERO teleop demos end
 when the task is done (robosuite's demo collection stops after ~10 successful steps), and an eval
@@ -35,7 +39,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (TASK_PAN, EpisodeWriter, json_default, natural_key, normalize_task,  # noqa: E402
-                    schema_from_like)
+                    schema_from_like, state8_from)
 
 EVAL_MAX_STEPS = 400   # lerobot TASK_SUITE_MAX_STEPS["libero_90"]
 
@@ -112,6 +116,8 @@ def main():
     ap.add_argument("--takes", default=None, help="comma-separated take names to use (default: all)")
     ap.add_argument("--keep-after-success", type=int, default=10,
                     help="frames kept after the first success frame (-1: keep all)")
+    ap.add_argument("--allow-eval-layouts", action="store_true",
+                    help="also use episodes generated on the eval init states (make_demos --states-from eval)")
     ap.add_argument("--allow-moka-disturbed", action="store_true",
                     help="also use episodes where the moka pot was knocked (moka.disturbed in the json)")
     ap.add_argument("--fps", type=int, default=None, help="dataset fps label (default: the reference's)")
@@ -133,6 +139,9 @@ def main():
         if takes_wanted and m.get("take") not in takes_wanted:
             skipped["take not selected"].append(p.name)
             continue
+        if m.get("states_from") == "eval" and not args.allow_eval_layouts:
+            skipped["eval init-state layout (test layout)"].append(p.name)
+            continue
         if (m.get("moka") or {}).get("disturbed") and not args.allow_moka_disturbed:
             skipped["moka pot disturbed"].append(p.name)
             continue
@@ -146,6 +155,9 @@ def main():
     for m, _ in eps:
         per_take[m.get("take", "?")] += 1
     print(f"{len(eps)} episodes from {len(per_take)} takes: {dict(per_take)}")
+    versions = sorted({str(m.get("generator_version")) for m, _ in eps})
+    if len(versions) > 1:
+        print(f"WARNING: episodes from several make_demos.py versions: {versions}")
     if not eps:
         raise SystemExit("nothing to write")
     if args.dry_run:
@@ -166,24 +178,32 @@ def main():
             fs = m.get("first_success_frame")
             end = T if (fs is None or args.keep_after_success < 0) else min(T, fs + 1 + args.keep_after_success)
             sl = slice(0, end)
-            n = writer.add_episode(d["image"][sl], d["image2"][sl], d["state"][sl], d["action"][sl], TASK_PAN)
+            state, state_src, dev = d["state"], "stored", 0.0
+            if all(k in d.files for k in ("eef_pos_raw", "eef_quat_raw", "gripper_qpos_raw")):
+                state = state8_from(d["eef_pos_raw"], d["eef_quat_raw"], d["gripper_qpos_raw"])
+                state_src, dev = "recomputed", float(np.abs(state - d["state"]).max())
+                if dev > 1e-4:
+                    raise SystemExit(f"{p}: recomputed observation.state differs from the stored one by {dev}")
+            n = writer.add_episode(d["image"][sl], d["image2"][sl], state[sl], d["action"][sl], TASK_PAN)
             steps = d["step"][sl] if "step" in d.files else np.arange(n)
         fss = m.get("first_success_step")
         rec = dict(name=m["name"], take=m.get("take"), seed=m.get("seed"), layout_index=m.get("layout_index"),
                    frames_in=T, frames_written=n, first_success_frame=fs, first_success_step=fss,
                    last_step=int(steps[-1]) if n else None,
                    eval_distance_cm=(m.get("eval_distance") or {}).get("min_joint_cm"),
-                   source=str(p))
+                   generator_version=m.get("generator_version"), state_source=state_src,
+                   state_vs_stored_max_abs=dev, source=str(p))
         report.append(rec)
         warn = ""
         if fss is not None and fss >= EVAL_MAX_STEPS:
             warn = f"  WARNING: first success at step {fss} >= eval horizon {EVAL_MAX_STEPS}"
-        print(f"  {m['name']:24s} {n:4d}/{T} frames, first success frame {fs}{warn}", flush=True)
+        print(f"  {m['name']:24s} {n:4d}/{T} frames, first success frame {fs}, state {state_src}{warn}", flush=True)
     changed = writer.close()
     lens = [r["frames_written"] for r in report]
     summary = dict(task=TASK_PAN, n_episodes=len(report), n_frames=int(sum(lens)),
                    length_min=min(lens), length_median=float(np.median(lens)), length_max=max(lens),
-                   per_take=dict(per_take), keep_after_success=args.keep_after_success, fps=schema.fps,
+                   per_take=dict(per_take), generator_versions=versions,
+                   keep_after_success=args.keep_after_success, fps=schema.fps,
                    like=args.like, harmonized_info_keys=changed, inputs=args.inputs, wall_s=time.time() - t0,
                    episodes=report)
     rep = out.parent / f"{out.name}_report.json"

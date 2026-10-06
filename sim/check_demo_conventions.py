@@ -147,6 +147,13 @@ def main():
     # same check on the raw robot_state for the parts that are copied (pos, gripper)
     cmp["eef_pos_max_abs"] = float(np.abs(np.asarray(fobs["robot_state"]["eef"]["pos"], np.float32) - d["state"][0][:3]).max())
     cmp["gripper_qpos_max_abs"] = float(np.abs(np.asarray(fobs["robot_state"]["gripper"]["qpos"], np.float32) - d["state"][0][6:]).max())
+    # what write_lerobot_dataset.py puts in observation.state (LeRobot's own axis-angle when the npz
+    # carries the raw robot state)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from write_lerobot_dataset import lerobot_state as writer_state
+    ws, cmp["writer_state_source"] = writer_state(d)
+    cmp["writer_state_max_abs"] = float(np.abs(st_p - ws[0]).max())
+    cmp["writer_state_bit_exact"] = bool(np.array_equal(st_p.view(np.uint32), ws[0].view(np.uint32)))
     out["frame0"] = cmp
     lenv.close()
     png = args.png or os.path.splitext(args.npz)[0] + "_conventions.png"

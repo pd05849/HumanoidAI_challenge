@@ -64,29 +64,42 @@ _PROC = None
 
 
 def quat2axisangle(quat_xyzw) -> np.ndarray:
-    """xyzw quaternion -> axis * angle, float32, exactly as LiberoProcessorStep._quat2axisangle
-    (uses LeRobot's own function when importable; it does not canonicalise the sign of w)."""
+    """(T,4) or (4,) xyzw quaternions -> axis * angle, float64, with LeRobot's own
+    LiberoProcessorStep._quat2axisangle when importable (it does not canonicalise the sign of w).
+    At eval time LiberoEnv returns float64 robot_state and the processor casts to float32 only
+    after concatenating, so the same order is used here (bit-identical to the eval pipeline; the
+    numpy fallback, used only without torch/lerobot, agrees to ~2e-6)."""
     global _PROC
-    q = np.asarray(quat_xyzw, dtype=np.float32).reshape(4)
+    q = np.asarray(quat_xyzw, dtype=np.float64)
+    single = q.ndim == 1
+    q = q.reshape(-1, 4)
     try:
         import torch
         if _PROC is None:
             from lerobot.processor.env_processor import LiberoProcessorStep
             _PROC = LiberoProcessorStep()
-        return _PROC._quat2axisangle(torch.as_tensor(q)[None])[0].numpy().astype(np.float32)
+        out = _PROC._quat2axisangle(torch.from_numpy(np.ascontiguousarray(q))).numpy()
     except ImportError:
-        w = np.clip(q[3], np.float32(-1.0), np.float32(1.0))
-        den = np.sqrt(np.maximum(np.float32(1.0) - w * w, np.float32(0.0)))
-        if den > 1e-10:
-            return ((q[:3] / den) * (np.float32(2.0) * np.arccos(w))).astype(np.float32)
-        return np.zeros(3, np.float32)
+        w = np.clip(q[:, 3], -1.0, 1.0)
+        den = np.sqrt(np.maximum(1.0 - w * w, 0.0))
+        ok = den > 1e-10
+        out = np.zeros((len(q), 3))
+        out[ok] = q[ok, :3] / den[ok, None] * (2.0 * np.arccos(w[ok]))[:, None]
+    return out[0] if single else out
+
+
+def state8_from(eef_pos, eef_quat, gripper_qpos) -> np.ndarray:
+    """observation.state = [eef_pos(3), axis-angle(3), gripper_qpos(2)] -> float32, for one
+    frame ((3,), (4,), (2,)) or a sequence ((T,3), (T,4), (T,2))."""
+    pos = np.asarray(eef_pos, np.float64)
+    aa = quat2axisangle(eef_quat)
+    grip = np.asarray(gripper_qpos, np.float64)
+    return np.concatenate([pos, aa, grip], axis=-1).astype(np.float32)
 
 
 def state8(obs: dict) -> np.ndarray:
     """observation.state from a raw robosuite/LIBERO observation dict."""
-    return np.concatenate([np.asarray(obs["robot0_eef_pos"], np.float32),
-                           quat2axisangle(obs["robot0_eef_quat"]),
-                           np.asarray(obs["robot0_gripper_qpos"], np.float32)]).astype(np.float32)
+    return state8_from(obs["robot0_eef_pos"], obs["robot0_eef_quat"], obs["robot0_gripper_qpos"])
 
 
 def images(obs: dict) -> tuple[np.ndarray, np.ndarray]:

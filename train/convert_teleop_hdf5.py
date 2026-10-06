@@ -62,7 +62,8 @@ def libero_task():
 
 def make_env(bddl):
     from libero.libero.envs import OffScreenRenderEnv
-    return OffScreenRenderEnv(bddl_file_name=bddl, camera_heights=CAM, camera_widths=CAM)
+    # as lerobot.envs.libero.LiberoEnv builds it (no robosuite initialization noise, 20 Hz)
+    return OffScreenRenderEnv(bddl_file_name=bddl, camera_heights=CAM, camera_widths=CAM, control_freq=20)
 
 
 def _floats(s):

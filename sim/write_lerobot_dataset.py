@@ -9,8 +9,10 @@ usage:
 
 Inputs: a make_demos.py --out folder (uses OUT/episodes/*.npz), an episodes folder, or .npz files.
 Only episodes whose .json says kept=true and success=true are written. Episodes from the eval
-init states (--states-from eval: those are the test layouts) and episodes where the moka pot was
-disturbed are skipped unless --allow-eval-layouts / --include-moka-disturbed.
+init states (--states-from eval: those are the test layouts), episodes where the moka pot was
+disturbed and episodes from make_demos.py versions before 2026-10-06b (robosuite init noise ->
+controller posture target differing from LiberoEnv) are skipped unless --allow-eval-layouts /
+--include-moka-disturbed / --allow-old-generator.
 
 Features (the LeRobot LIBERO convention, = what LiberoEnv + LiberoProcessorStep feed a policy):
   observation.images.image   video (256,256,3)  agentview, already rotated 180 deg (npz "image")
@@ -105,6 +107,9 @@ def select(npz_paths, args):
             why = "not a kept success"
         elif m.get("task") != TASK:
             why = f"task {m.get('task')!r}"
+        elif m.get("generator_version") is None and not args.allow_old_generator:
+            why = ("made before the eval-identical-env fix of make_demos.py (2026-10-06b): its physics "
+                   "differ from LiberoEnv, regenerate it (--allow-old-generator to include anyway)")
         elif m.get("states_from") == "eval" and not args.allow_eval_layouts:
             why = "layout is an eval init state (--allow-eval-layouts to include)"
         elif (m.get("moka") or {}).get("disturbed") and not args.include_moka_disturbed:
@@ -357,6 +362,7 @@ def main():
                     help="keep frames up to first success + N (-1 = keep all)")
     ap.add_argument("--include-moka-disturbed", action="store_true")
     ap.add_argument("--allow-eval-layouts", action="store_true")
+    ap.add_argument("--allow-old-generator", action="store_true")
     ap.add_argument("--max-episodes", type=int, default=0)
     ap.add_argument("--overwrite", action="store_true")
     ap.add_argument("--no-verify", action="store_true")
