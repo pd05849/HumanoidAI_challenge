@@ -294,6 +294,7 @@ python train/convert_phone_npz.py demos/r0 demos/r1 demos/r2 --fps 10 --out data
 | `docs/filming.md`, `docs/img/filming_layout.png` | Filming instructions, written before the shoot, with a note on how the takes were actually recorded |
 | `docs/training.md` | Building the datasets, fine-tuning, evaluating |
 | `scripts/make_markers.py`, `assets/markers_letter.pdf` | Printable markers |
+| `scripts/check_env.py` | Checks this Python environment: LeRobot, SmolVLA, LIBERO rendering, GPU |
 | `scripts/check_markers.py` | Checks a test clip: are the board and the pan marker found? |
 | `scripts/calibrate_camera.py`, `data/calibration/ipad_1080p.json` | Camera calibration, and the result for the iPad used |
 | `scripts/track_pan.py` | Tracks the pan: its 3-D path relative to the board, phases, quality numbers |

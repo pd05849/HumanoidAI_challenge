@@ -66,10 +66,11 @@ flowchart LR
 ## 0. Setup (once)
 
 ```bash
-# in the LeRobot source checkout: SmolVLA, LIBERO and the training extras (accelerate)
-pip install -e ".[smolvla,libero,training]"
+# SmolVLA, LIBERO and the training extras (accelerate), from PyPI or a LeRobot source checkout
+pip install "lerobot[smolvla,libero,training]"     # or, in the checkout: pip install -e ".[smolvla,libero,training]"
 export MUJOCO_GL=egl                          # headless GPU rendering
 cd /path/to/humanoidai_challenge
+python scripts/check_env.py                   # every line should say OK
 ```
 
 `lerobot-train` refuses to start without `accelerate` (the `training` extra). Free disk needed:
