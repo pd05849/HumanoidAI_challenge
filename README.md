@@ -165,10 +165,35 @@ test layouts, recording success and which object it picked up first:
 - *frying pan*: did it learn to follow the new word?
 - *moka pot*: did it keep the old skill, and still tell the two apart?
 
-The phone demos never start from the 50 test layouts, but LIBERO's placement regions are small, so
-the nearest test layout is only 0.3-2.5 cm away (median 1.2 cm, pan + moka pot positions). Whether
-LIBERO's own teleop demos start from the test layouts is reported when run T's data is built
-([docs/training.md](docs/training.md)).
+Neither training set starts from the 50 test layouts. LIBERO's placement regions are small, so the
+nearest test layout is only 0.3-2.5 cm away for the phone demos (median 1.2 cm, pan + moka pot
+positions) and 0.5-2.1 cm for LIBERO's teleop demos: the same situation for both.
+
+### What the two kinds of frying-pan demos look like
+
+![One of LIBERO's human-teleoperated demos (left) and one phone-derived demo (right), same task, the two cameras the model sees](docs/img/teleop_vs_phone.gif)
+
+*Left: one of LIBERO's 50 teleop demos, a person steering the robot with a 3-D mouse. Right: one
+phone-derived demo (knob turn and grasp scripted; the carry follows my pan's path from a phone
+clip). Same task and simulator, the two cameras the model learns from (mirrored left-right, as
+LIBERO stores them). The bar under each side shows when the gripper is closed.*
+
+Over all 50 demos of each ([gripper paths of every demo](docs/img/teleop_vs_phone_paths.png),
+[full table](docs/img/teleop_vs_phone.md)):
+
+| median | LIBERO teleop (run T) | phone-derived (run P) |
+|---|---|---|
+| demo length | 13.7 s | 13.8 s |
+| time with the pan in hand | 3.8 s | 6.8 s |
+| pan moved, grasp to release | 44 cm | 40 cm |
+| pan lifted above the grasp | 21 cm | 24 cm |
+| fastest 5 % of steps | 25 cm/s | 41 cm/s |
+| gripper closed | 45 % of steps | 84 % of steps |
+
+Same length, height and distance, but a different rhythm: the people take longer to turn the knob
+and reach the handle (grasp at 9.2 s vs 6.9 s) and then carry the pan faster; the scripted robot
+reaches at full speed, pushes the knob with closed fingers (hence 84 %) and carries the pan at the
+pace of my video (sped up 1.5x).
 
 ## 4. Results
 
@@ -203,8 +228,9 @@ instructions: success rate and which object each picked up first.
   is picked up (the pan, by its handle) is fixed by the script for this task. The video supplies
   the carry: where the pan goes, along which path, how high and how fast.
 - ℹ️ **What P vs T can and cannot show:** the phone demos' arm motions come from a scripted
-  controller, T's from human teleoperators. A difference between them may come from scripted vs
-  human motion as much as from the video. A control run with the scripted carry alone (no video
+  controller, T's from human teleoperators, and they differ in rhythm (see the comparison in
+  section 3). A difference between the runs may come from scripted vs human motion as much as
+  from the video. A control run with the scripted carry alone (no video
   path) would separate the two; it is not one of the three runs.
 
 ## Run it yourself
