@@ -71,7 +71,7 @@ What to expect, and what to do otherwise:
 | policy output | `action` (7) | stop: the recipe assumes LIBERO's 7-D action |
 | source `fps` | probably 10 (inherited from `physical-intelligence/libero`), maybe 20 | nothing: the converters copy the source's fps label automatically. One dataset frame is always one 20 Hz control step, and SmolVLA's action chunk is counted in frames, so the label does not change what is learned |
 | source features | the four keys above plus LeRobot's index columns | an extra feature makes the merge refuse: drop it from the moka subset with `lerobot-edit-dataset --operation.type remove_feature` |
-| moka episodes | fewer than 50 is normal (the OpenVLA-regenerated LIBERO data dropped demos that failed on replay) | if it finds **0**, run `python train/make_moka_subset.py --list-tasks` and pass the exact string with `--task` |
+| moka episodes | up to 50; fewer is possible (the OpenVLA-regenerated LIBERO data that the LeRobot datasets derive from dropped demos that failed on replay) | if it finds **0**, run `python train/make_moka_subset.py --list-tasks` and pass the exact string with `--task` |
 | codebase version | `v3.0` | a v2.x dataset must be converted first: `python -m lerobot.scripts.convert_dataset_v21_to_v30 --repo-id=...` |
 
 To use `lerobot/libero` (or a per-suite dataset) instead: `SOURCE_REPO=lerobot/libero` for the
@@ -87,9 +87,13 @@ PHONE_DEMOS=/path/to/make_demos_out bash train/build_datasets.sh
 `PHONE_DEMOS` is one or more `sim/make_demos.py --out` folders (they contain `episodes/*.npz`). If
 the phone demos are not ready yet, leave it out: the script builds the moka subset, the teleop
 dataset and run T, and skips run P; run it again later with `PHONE_DEMOS` set (finished steps are
-skipped; `REBUILD=1` redoes everything). A phone dataset already converted elsewhere with
-`train/convert_phone_npz.py` can be passed as `PHONE_DATASET=/path/to/phone_pan` instead (it must
-have the moka subset's fps).
+skipped; `REBUILD=1` redoes everything).
+
+If the npz episodes live on another machine (they are ~50 MB each), convert them there and copy
+only the LeRobot dataset (~2 MB per episode): `python train/convert_phone_npz.py MAKE_DEMOS_OUT
+--fps <the source fps from step 1> --max-episodes 50 --out phone_pan`, then pass
+`PHONE_DATASET=/path/to/phone_pan` instead of `PHONE_DEMOS`. The build script fixes the metadata
+spelling against the moka subset; a different fps is refused (rebuild with the right `--fps`).
 
 | Step | Script | Output (`outputs/datasets/`) |
 |---|---|---|
@@ -108,14 +112,16 @@ Logs go to `outputs/datasets/logs/`. **Look at these before training:**
    image, the table and stove in front). If the moka row is rotated relative to ours, stop: the
    180-degree convention differs.
 2. The end of `logs/check_sources.log` must say `ALL COMPATIBLE`. It also prints, per dataset,
-   episode lengths and action statistics (the scripted phone demos saturate some actions at
-   +-1 more often than human teleop; that is expected and worth a sentence in the write-up).
+   episode lengths and action statistics; differences between the phone and teleop rows (episode
+   length, actions saturated at +-1, gripper-closed fraction) are worth a sentence in the write-up.
 3. `logs/teleop_pan.log`: for each demo, whether the action replay succeeded (`actions`) or the
    recorded states were re-rendered (`states`), how far the stove had to be moved to where it was
-   in the demo (`stove moved ... mm`, normally 0-20 mm), and the nearest eval start layout. If it
-   says `no model_file attribute`, the stove fix is off and more demos fall back to `states`.
+   in the demo (`stove moved ... mm`, normally 0-20 mm), and the distance of its start layout to
+   the nearest of the 50 eval layouts (pan and moka-pot positions, cm; 0.00 means it starts from
+   an eval layout itself). If it warns `no model_file attribute`, the stove fix is off and more
+   demos fall back to `states`.
 4. `logs/pin_P.log`: the policy's and the dataset's state/action mean and std side by side.
-   They should be of the same order (the policy's come from all of LIBERO).
+   They should be of the same order (the policy's come from its own LIBERO training data).
 
 Episode counts: `MATCH_COUNTS=1` (default) caps the phone episodes at the number of teleop
 episodes, taking them round-robin over the takes, so P and T have the same number of frying-pan
@@ -164,7 +170,7 @@ lerobot-train \
 | learning rate | the policy's preset (AdamW, cosine with warmup) | LeRobot shrinks warmup and decay to the run length when it is shorter than the preset's decay steps |
 | normalization | smolvla_libero's own state/action mean and std, written into both datasets | see "Normalization" below |
 | `n_action_steps`, `num_steps` | 10, 10 | only used at inference; stored in the checkpoint's config so that eval defaults match |
-| seed | 1000 | same model init order and data shuffling for both runs |
+| seed | 1000 | same data order and random draws for both runs |
 | checkpoints | every 5 000 steps + last | report `last` for both runs; picking the best checkpoint on the test tasks would be tuning on the test set |
 
 ## 4. Evaluate (20-30 min per policy)
@@ -210,8 +216,8 @@ LeRobot's own `split_dataset` writes them out (same features, fps, encoder, per-
 
 **Teleop demos (b).** The LIBERO HDF5 (`yifengzhu-hf/LIBERO-datasets`, the same file
 `scripts/replay_demo.py` uses) has 128x128 images, so every demo is re-rendered at 256x256:
-- `--mode actions` follows OpenVLA's `regenerate_libero_dataset.py`, which is how the LIBERO
-  training data of smolvla_libero was made: load the demo's first MuJoCo state, 10 settle steps
+- `--mode actions` follows OpenVLA's `regenerate_libero_dataset.py`, the recipe behind the
+  OpenVLA LIBERO data that `HuggingFaceVLA/libero` derives from: load the demo's first MuJoCo state, 10 settle steps
   (as LeRobot's eval reset), re-send the human's actions, skip no-op actions, keep the demo if
   LIBERO's success check holds at the end.
 - The stove is a LIBERO *fixture*: each env reset places it anew (about +-1 cm), and its pose is
@@ -226,9 +232,11 @@ LeRobot's own `split_dataset` writes them out (same features, fps, encoder, per-
   qpos]` computed with LeRobot's own `LiberoProcessorStep` conversion (bit-identical to what
   `lerobot-eval` feeds the policy), action = the recorded 7-D action; frame t is the observation
   before action t.
-- The report also gives, per demo, the distance of its start state to the 50 eval start layouts.
-  If the human demos start from the eval layouts themselves, T trains on the test layouts
-  while P does not (`sim/make_demos.py` samples new layouts): say so when comparing.
+- The report also gives, per demo, the distance of its start layout to the 50 eval layouts (the
+  same pan + moka-pot measure `sim/make_demos.py` reports for its own layouts). If the human demos
+  start from the eval layouts themselves (0.00 cm), T trains on the test layouts while P does not
+  (`sim/make_demos.py` samples new ones): say so when comparing. The eval layouts are close
+  together (a few cm apart), so only near-zero distances mean the same layout.
 
 **Phone demos (c).** `sim/make_demos.py` already stores frames in the same conventions;
 `train/convert_phone_npz.py` keeps kept, successful episodes not generated on eval layouts,
@@ -248,7 +256,7 @@ which avoids stream concatenation between differently encoded files.
 **Normalization.** When `lerobot-train` fine-tunes from a pretrained policy, it replaces the
 policy's normalization statistics with the training dataset's `meta/stats.json`. P and T would
 then normalize state and action differently from each other and from pretraining (scripted and
-human demos have different action statistics). `train/pin_norm_stats.py` writes smolvla_libero's
+human demos can have quite different action statistics). `train/pin_norm_stats.py` writes smolvla_libero's
 own state/action mean and std (read from its `policy_preprocessor` files) into both merged
 datasets, so normalization is identical in both runs and equal to the pretrained model's.
 `PIN_STATS=0` turns this off; `python train/pin_norm_stats.py --dataset outputs/datasets/P --restore`
@@ -274,7 +282,7 @@ Start the build first; evaluate the base model while P trains.
 | `ImportError: 'accelerate' is required` | `pip install -e ".[training]"` |
 | merge: `Same fps/robot_type/features is expected` | run `python train/check_datasets.py outputs/datasets/moka outputs/datasets/<other>`: it lists the differing entries. Metadata-only differences: add `--harmonize`. A different fps: rebuild that dataset (the converters take `--like`/`--fps`) |
 | converter: `cannot encode with {'vcodec': ...}` | the source codec is missing from PyAV's FFmpeg; pass `--vcodec libsvtav1` (decoding still works per file) |
-| teleop: `state dim ... != env state dim` | the HDF5 does not match the installed LIBERO; use `--mode states` only after checking a rendered video (`--video`) |
+| teleop: `state dim ... != env state dim` | the HDF5 was recorded with a different LIBERO scene model than the installed `hf-libero`; neither mode can load its states. Check the `hf-libero` version against the one `lerobot[libero]` pins |
 | `FileExistsError: Output directory ... already exists` | a training run with that name exists; delete it or give a tag: `bash train/train.sh P run2` |
 | eval jsonl has more than 50 lines | an old log was appended to; `train/eval.sh` deletes it first, so rerun through `eval.sh` with `FORCE=1` |
 | CUDA out of memory | `BATCH=16 STEPS=<2x>` (same for both runs) |

@@ -4,7 +4,9 @@
 #   (a) moka subset   : LIBERO-10 task 2 episodes out of HuggingFaceVLA/libero      -> $DATA/moka
 #   (b) teleop pan    : the 50 LIBERO-90 task 21 human demos, re-rendered at 256 px  -> $DATA/teleop_pan
 #   (c) phone pan     : sim/make_demos.py episodes (from the phone-tracked paths)    -> $DATA/phone_pan
+#   (c2) phone pan all: optional, every phone-derived demo (PHONE_ALL_DATASET)      -> $DATA/phone_pan_all
 #   (d) merge         : P = moka + phone_pan, T = moka + teleop_pan                  -> $DATA/P, $DATA/T
+#                       Pall = moka + phone_pan_all (if PHONE_ALL_DATASET is set)    -> $DATA/Pall
 #       then the normalization stats of P and T are pinned to smolvla_libero's own (PIN_STATS=1).
 #
 # Usage (repo root, LeRobot env with lerobot[libero,smolvla], GPU machine):
@@ -28,6 +30,7 @@ PIN_STATS=${PIN_STATS:-1}
 MATCH_COUNTS=${MATCH_COUNTS:-1}
 PHONE_DEMOS=${PHONE_DEMOS:-}
 PHONE_DATASET=${PHONE_DATASET:-}
+PHONE_ALL_DATASET=${PHONE_ALL_DATASET:-}
 PY=${PY:-python}
 export MUJOCO_GL=${MUJOCO_GL:-egl}
 mkdir -p "$DATA" "$DATA/logs"
@@ -76,8 +79,19 @@ else
   echo "== (c) neither PHONE_DEMOS nor PHONE_DATASET set: phone demos and run P skipped for now"
 fi
 
+if [[ -n "$PHONE_ALL_DATASET" ]]; then
+  echo "== (c2) all phone-derived demos from $PHONE_ALL_DATASET"
+  if have "$DATA/phone_pan_all"; then echo "   exists, skipped"; else
+    safe_rm "$DATA/phone_pan_all"
+    cp -r "$PHONE_ALL_DATASET" "$DATA/phone_pan_all"
+    $PY train/check_datasets.py "$DATA/moka" "$DATA/phone_pan_all" --harmonize --no-stats \
+        2>&1 | tee "$DATA/logs/phone_pan_all.log"
+  fi
+fi
+
 SOURCES=("$DATA/moka" "$DATA/teleop_pan")
 [[ -f "$DATA/phone_pan/meta/info.json" ]] && SOURCES+=("$DATA/phone_pan")
+[[ -f "$DATA/phone_pan_all/meta/info.json" ]] && SOURCES+=("$DATA/phone_pan_all")
 echo "== check: sources mergeable and alike"
 $PY train/check_datasets.py "${SOURCES[@]}" --png "$DATA/check_sources.png" --json "$DATA/check_sources.json" \
     2>&1 | tee "$DATA/logs/check_sources.log"
@@ -100,9 +114,10 @@ merge() {  # merge NAME PAN_DATASET
 echo "== (d) merge"
 merge T "$DATA/teleop_pan"
 if [[ -f "$DATA/phone_pan/meta/info.json" ]]; then merge P "$DATA/phone_pan"; fi
+if [[ -f "$DATA/phone_pan_all/meta/info.json" ]]; then merge Pall "$DATA/phone_pan_all"; fi
 
 RUNS=()
-for r in P T; do [[ -f "$DATA/$r/meta/info.json" ]] && RUNS+=("$DATA/$r"); done
+for r in P Pall T; do [[ -f "$DATA/$r/meta/info.json" ]] && RUNS+=("$DATA/$r"); done
 echo "== check: merged datasets"
 $PY train/check_datasets.py "${RUNS[@]}" --png "$DATA/check_runs.png" --json "$DATA/check_runs.json" \
     2>&1 | tee "$DATA/logs/check_runs.log"

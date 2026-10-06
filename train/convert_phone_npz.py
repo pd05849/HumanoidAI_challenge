@@ -133,6 +133,10 @@ def main():
         if m.get("_no_json"):
             skipped["no json"].append(p.name)
             continue
+        if m.get("generator_version") is None:
+            # made before the eval-identical env fix in sim/make_demos.py: actions do not replay in LiberoEnv
+            skipped["old generator (no generator_version)"].append(p.name)
+            continue
         if not (m.get("kept") and m.get("success")):
             skipped["not kept/successful"].append(p.name)
             continue
