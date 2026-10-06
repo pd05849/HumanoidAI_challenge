@@ -1,12 +1,41 @@
 # Training and evaluation recipe
 
-Two fine-tuning runs of [`smolvla_libero`](https://huggingface.co/HuggingFaceVLA/smolvla_libero),
+Three fine-tuning runs of [`smolvla_libero`](https://huggingface.co/HuggingFaceVLA/smolvla_libero),
 identical except for where the frying-pan demos come from:
 
 | Run | Frying-pan demos ("turn on the stove and put the **frying pan** on it") | Moka demos ("...put the **moka pot** on it") |
 |---|---|---|
-| **P** (phone) | robot demos generated from the phone-tracked pan paths (`sim/make_demos.py`) | all LIBERO-10 task 2 demos from the LeRobot LIBERO dataset |
-| **T** (teleop) | the 50 human teleop demos LIBERO ships for LIBERO-90 task 21 | the same moka demos |
+| **T** (teleop) | the 50 human teleop demos LIBERO ships for LIBERO-90 task 21 | all LIBERO-10 task 2 demos from the LeRobot LIBERO dataset |
+| **P** (phone, same count) | as many phone-derived robot demos as T has teleop demos (`sim/make_demos.py`, round-robin over the 18 takes) | the same moka demos |
+| **Pall** (phone, all) | every phone-derived robot demo (18 takes x several layouts) | the same moka demos |
+
+P vs T asks whether phone-derived demos are as good as teleoperated ones at equal count; Pall vs P
+asks what multiplying 20 minutes of video into more demos buys.
+
+## Quick start: two machines
+
+| | DGX Spark | RTX workstation |
+|---|---|---|
+| 1 | setup + checks (sections 0-1) | setup + checks (sections 0-1) |
+| 2 | build datasets (section 2) | build datasets (section 2) |
+| 3 | `bash train/train.sh Pall` | `bash train/train.sh T` |
+| 4 | `bash train/eval.sh .../Pall/... Pall` | `bash train/eval.sh .../T/... T`, then `bash train/eval.sh HuggingFaceVLA/smolvla_libero base` |
+| 5 | whichever is free first: `bash train/train.sh P`, then `bash train/eval.sh .../P/... P` | |
+
+The phone-derived datasets are built in the cloud session and arrive with the private clips repo:
+
+```bash
+git -C ../Humanoid_clips pull          # datasets/phone_pan_P (count-matched) and datasets/phone_pan_all
+PHONE_DATASET=../Humanoid_clips/datasets/phone_pan_P \
+PHONE_ALL_DATASET=../Humanoid_clips/datasets/phone_pan_all \
+  bash train/build_datasets.sh
+```
+
+They were written with `fps = 10`, the value the LeRobot LIBERO datasets are believed to use. If
+the build stops with an fps mismatch, check `meta/info.json` of the moka subset and ask for the
+phone datasets to be rewritten with its fps (the source episodes are kept for that).
+If the DGX Spark (ARM) cannot run the LIBERO simulator, train there and evaluate on the RTX
+machine: training only needs the datasets. Use the same `STEPS` and `BATCH` for every run.
 
 Both start from `HuggingFaceVLA/smolvla_libero`, use the same steps, batch size, seed, learning-rate
 schedule and normalization statistics, and are evaluated, together with the untouched model, on
