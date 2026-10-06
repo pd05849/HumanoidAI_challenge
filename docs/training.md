@@ -23,20 +23,20 @@ asks what multiplying 6 minutes of video (18 clips) into more demos buys.
 | 5 | whichever is free first: `bash train/train.sh P`, then `bash train/eval.sh outputs/train/P/checkpoints/last/pretrained_model P` | |
 | 6 | collect all `eval_logs/` on one machine: `python train/summarize_evals.py eval_logs --names base T P Pall --md eval_logs/summary.md` | |
 
-The phone-derived datasets are built in the cloud session and arrive with the private clips repo:
-
-Once they are published on Hugging Face (`python scripts/push_dataset.py`, see the README), pass
-their dataset ids instead and nothing else needs cloning:
-`PHONE_DATASET=<hf_user>/libero90_frying_pan_phone_50 PHONE_ALL_DATASET=<hf_user>/libero90_frying_pan_phone bash train/build_datasets.sh`.
-Until then:
+The phone-derived datasets are public on Hugging Face, so the build downloads them by name:
+[`Delcastillo8/libero90_frying_pan_phone_50`](https://huggingface.co/datasets/Delcastillo8/libero90_frying_pan_phone_50)
+(the 50 demos of run P) and
+[`Delcastillo8/libero90_frying_pan_phone`](https://huggingface.co/datasets/Delcastillo8/libero90_frying_pan_phone)
+(all 153, run Pall).
 
 ```bash
-CLIPS=../Humanoid_clips                # wherever the private clips repo is cloned
-git -C $CLIPS pull                     # datasets/phone_pan_P (count-matched) and datasets/phone_pan_all
-PHONE_DATASET=$CLIPS/datasets/phone_pan_P \
-PHONE_ALL_DATASET=$CLIPS/datasets/phone_pan_all \
+PHONE_DATASET=Delcastillo8/libero90_frying_pan_phone_50 \
+PHONE_ALL_DATASET=Delcastillo8/libero90_frying_pan_phone \
   bash train/build_datasets.sh
 ```
+
+(The same datasets are in the private clips repo under `datasets/phone_pan_P` and
+`datasets/phone_pan_all`; local folders work too: `PHONE_DATASET=../Humanoid_clips/datasets/phone_pan_P ...`.)
 
 They were written with `fps = 10`, the same label as `HuggingFaceVLA/libero` (checked). That
 dataset stores its camera frames as images inside the parquet files rather than as videos, so the

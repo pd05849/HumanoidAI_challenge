@@ -143,6 +143,10 @@ For every take and every new arrangement of the kitchen objects:
 
 Repeating this over new random arrangements of the objects (the idea behind MimicGen) turned
 17 of the 18 takes into **153 robot demos**, 9 per take (222 arrangements tried; details below).
+They are public on Hugging Face in LeRobot format:
+[`Delcastillo8/libero90_frying_pan_phone`](https://huggingface.co/datasets/Delcastillo8/libero90_frying_pan_phone)
+(all 153) and [`Delcastillo8/libero90_frying_pan_phone_50`](https://huggingface.co/datasets/Delcastillo8/libero90_frying_pan_phone_50)
+(the 50 of run P); the "Visualize this dataset" button on each page plays every episode.
 Method, design choices and references: [**How a phone clip becomes a robot demo**](docs/how-it-works.md).
 
 ## 3. The comparison
