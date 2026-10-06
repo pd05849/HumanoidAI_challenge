@@ -25,6 +25,11 @@ asks what multiplying 6 minutes of video (18 clips) into more demos buys.
 
 The phone-derived datasets are built in the cloud session and arrive with the private clips repo:
 
+Once they are published on Hugging Face (`python scripts/push_dataset.py`, see the README), pass
+their dataset ids instead and nothing else needs cloning:
+`PHONE_DATASET=<hf_user>/libero90_frying_pan_phone_50 PHONE_ALL_DATASET=<hf_user>/libero90_frying_pan_phone bash train/build_datasets.sh`.
+Until then:
+
 ```bash
 CLIPS=../Humanoid_clips                # wherever the private clips repo is cloned
 git -C $CLIPS pull                     # datasets/phone_pan_P (count-matched) and datasets/phone_pan_all

@@ -11,7 +11,8 @@
 #
 # Usage (repo root, LeRobot env with lerobot[libero,smolvla], GPU machine):
 #   PHONE_DEMOS=/path/to/make_demos_out bash train/build_datasets.sh      # npz episodes (sim/make_demos.py)
-#   PHONE_DATASET=/path/to/phone_pan bash train/build_datasets.sh         # or a LeRobot dataset built
+#   PHONE_DATASET=/path/to/phone_pan bash train/build_datasets.sh         # or a LeRobot dataset (folder or
+#                                       Hugging Face dataset id, e.g. <hf_user>/libero90_frying_pan_phone_50) built
 #                                       elsewhere with train/convert_phone_npz.py; if its fps label or
 #                                       codec differs from moka's, it is re-written (conform_dataset.py)
 # Without either, only moka, teleop_pan and T are built (run it again later for P).
@@ -45,8 +46,18 @@ safe_rm() {  # remove a dataset folder this script created (and nothing else)
   fi
 }
 
+fetch_dataset() {  # fetch_dataset SRC: echo a local folder for SRC (a folder, or a Hub dataset id to download)
+  if [[ -d "$1" ]]; then echo "$1"; return; fi
+  local dst="$DATA/hub/${1//\//__}"
+  echo "   downloading the Hugging Face dataset $1 -> $dst" >&2
+  $PY -c "import sys; from huggingface_hub import snapshot_download as d; d(sys.argv[1], repo_type='dataset', local_dir=sys.argv[2])" \
+      "$1" "$dst" >&2 || { echo "   cannot download $1 (not a folder here, nor a Hugging Face dataset you can access)" >&2; return 1; }
+  echo "$dst"
+}
+
 import_phone() {  # import_phone SRC NAME: copy a ready-made phone dataset and make it mergeable with moka
-  local src=$1 name=$2
+  local src name=$2
+  src=$(fetch_dataset "$1")
   safe_rm "$DATA/$name"
   cp -r "$src" "$DATA/$name"
   # Metadata only (names, info keys, robot_type). It refuses if fps, codec, shapes or streams
