@@ -316,7 +316,7 @@ class EpisodeWriter:
     reference dataset's layout. Call close() at the end (finalize + harmonize)."""
 
     def __init__(self, root, repo_id: str, schema: Schema, overwrite: bool = False,
-                 image_writer_threads: int = 4):
+                 image_writer_threads: int = 4, max_file_mb: int | None = None):
         from lerobot.datasets.lerobot_dataset import LeRobotDataset
         self.root = Path(root)
         if self.root.exists():
@@ -326,6 +326,8 @@ class EpisodeWriter:
         self.root.parent.mkdir(parents=True, exist_ok=True)
         self.schema = schema
         kw = {} if schema.encoder is None else {"rgb_encoder": schema.encoder}
+        if max_file_mb:  # e.g. to keep every file under GitHub's 100 MB limit
+            kw.update(video_files_size_in_mb=max_file_mb, data_files_size_in_mb=max_file_mb)
         self.ds = LeRobotDataset.create(repo_id=repo_id, fps=schema.fps, features=schema.features,
                                         root=self.root, robot_type=schema.robot_type, use_videos=True,
                                         image_writer_threads=image_writer_threads, **kw)

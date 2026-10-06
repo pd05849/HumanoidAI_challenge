@@ -122,6 +122,8 @@ def main():
                     help="also use episodes where the moka pot was knocked (moka.disturbed in the json)")
     ap.add_argument("--fps", type=int, default=None, help="dataset fps label (default: the reference's)")
     ap.add_argument("--vcodec", default=None, help="video codec (default: the reference's)")
+    ap.add_argument("--max-file-mb", type=int, default=None,
+                    help="split data/video files at this size (LeRobot default: 100 / 200 MB)")
     ap.add_argument("--dry-run", action="store_true", help="list the selected episodes, write nothing")
     args = ap.parse_args()
 
@@ -173,7 +175,7 @@ def main():
     print(f"schema: fps {schema.fps}, robot_type {schema.robot_type}, keys {schema.key_map}"
           f"{'' if args.like else ' (no --like: defaults; the merge may refuse)'}")
     out = Path(args.out).resolve()
-    writer = EpisodeWriter(out, args.repo_id, schema, overwrite=args.overwrite)
+    writer = EpisodeWriter(out, args.repo_id, schema, overwrite=args.overwrite, max_file_mb=args.max_file_mb)
     report, t0 = [], time.time()
     for m, p in eps:
         with np.load(p) as d:
