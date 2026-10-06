@@ -169,9 +169,18 @@ test layouts, recording success and which object it picked up first:
 - *frying pan*: did it learn to follow the new word?
 - *moka pot*: did it keep the old skill, and still tell the two apart?
 
-Neither training set starts from the 50 test layouts. LIBERO's placement regions are small, so the
-nearest test layout is only 0.3-2.5 cm away for the phone demos (median 1.2 cm, pan + moka pot
-positions) and 0.5-2.1 cm for LIBERO's teleop demos: the same situation for both.
+Neither training set starts from the 50 test layouts, but all three draw from the same small
+start areas: LIBERO lets the pan and the moka pot start anywhere inside a 5 x 5 cm square each,
+and every phone demo uses a new random draw from them, as LIBERO's own human demos and test
+layouts do. The nearest test layout is 0.3-2.5 cm away for the phone demos (median 1.2 cm, pan +
+moka pot positions) and 0.5-2.1 cm for LIBERO's teleop demos: the same situation for both.
+
+![Start positions of the frying pan and the moka pot, seen from above: LIBERO's 50 test layouts, its 50 human demos and the 153 phone demos all fill the same two 5 x 5 cm areas](docs/img/start_positions.png)
+
+Spreading the pan wider, as MimicGen does for robustness, was a deliberate no: the test only
+uses these areas, and LIBERO's human demos come from them too, so wider layouts would change what
+P is compared with and would not show in the results. Robustness to new placements is a natural
+next step with its own wider test layouts.
 
 ### What the two kinds of frying-pan demos look like
 
