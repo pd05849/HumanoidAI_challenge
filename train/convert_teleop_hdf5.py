@@ -49,6 +49,7 @@ HF_FILE = "libero_90/KITCHEN_SCENE3_turn_on_the_stove_and_put_the_frying_pan_on_
 SUITE, TASK_ID, CAM = "libero_90", 21, 256
 DUMMY_ACTION = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0]   # lerobot get_libero_dummy_action()
 EVAL_MAX_STEPS = 400                                   # lerobot TASK_SUITE_MAX_STEPS["libero_90"]
+PAN_JOINT, MOKA_JOINT = "chefmate_8_frypan_1_joint0", "moka_pot_1_joint0"   # free joints (qpos xyz + quat)
 
 
 # ============================================================================ LIBERO
@@ -105,6 +106,23 @@ def apply_fixture_poses(env, demo_xml: str) -> dict:
         out[name] = dict(body=bname, demo_pos=pos.round(5).tolist(), reset_pos=before.round(5).tolist(),
                          moved_mm=float(np.linalg.norm(pos - before) * 1e3))
     sim.forward()
+    return out
+
+
+def nearest_eval_layout(env, state0, eval_init):
+    """Distance of a demo's start layout to the nearest of the 50 eval init states: hypot of the
+    pan and moka-pot xy distances in cm (the measure sim/make_demos.py reports for its layouts)."""
+    sim = env.env.sim
+    out = {}
+    try:
+        cols = [1 + sim.model.get_joint_qpos_addr(j)[0] for j in (PAN_JOINT, MOKA_JOINT)]
+        dp = np.linalg.norm(eval_init[:, cols[0]:cols[0] + 2] - state0[cols[0]:cols[0] + 2], axis=1)
+        dm = np.linalg.norm(eval_init[:, cols[1]:cols[1] + 2] - state0[cols[1]:cols[1] + 2], axis=1)
+        dj = np.hypot(dp, dm) * 100
+    except Exception:                       # joint names differ: whole-state distance instead
+        dj = np.linalg.norm(eval_init[:, 1:] - state0[1:], axis=1) * 100
+    i = int(np.argmin(dj))
+    out.update(nearest_eval_init_state=i, eval_layout_dist_cm=float(dj[i]))
     return out
 
 
@@ -235,10 +253,13 @@ def main():
         if isinstance(xml, bytes):
             xml = xml.decode()
         if not args.no_fixture_fix:
-            fixtures = apply_fixture_poses(env, xml) if xml else {"_": "no model_file attribute"}
-        d_eval = np.linalg.norm(eval_init[:, 1:] - states[0][1:], axis=1)
-        rec = dict(demo=name, n_steps=int(len(actions)), hdf5_obs_shapes=obs_keys, fixtures=fixtures,
-                   nearest_eval_init_state=int(np.argmin(d_eval)), nearest_eval_init_dist=float(d_eval.min()))
+            if xml:
+                fixtures = apply_fixture_poses(env, xml)
+            else:
+                fixtures = {"_": "no model_file attribute"}
+                print(f"  {name}: WARNING no model_file attribute: the stove stays where the reset put it")
+        near = nearest_eval_layout(env, states[0], eval_init)
+        rec = dict(demo=name, n_steps=int(len(actions)), hdf5_obs_shapes=obs_keys, fixtures=fixtures, **near)
         r, ok, first, n_noop = None, False, None, 0
         if args.mode in ("auto", "actions"):
             r, ok, first, n_noop = replay_actions(env, states, actions, args.settle, args.noops)
@@ -267,7 +288,7 @@ def main():
         fx = fixtures.get("flat_stove_1", {}) if isinstance(fixtures, dict) else {}
         print(f"  {name}: {used:7s} kept={ok!s:5s} frames {n:3d} (of {len(actions)} steps, {n_noop} no-ops)"
               f"{'' if first is None else f' success@{first}'} | stove moved {fx.get('moved_mm', float('nan')):.1f} mm"
-              f" | nearest eval init {rec['nearest_eval_init_state']} ({rec['nearest_eval_init_dist']:.3f})"
+              f" | nearest eval layout {rec['nearest_eval_init_state']}: pan+moka xy {rec['eval_layout_dist_cm']:.2f} cm"
               f" | {rec['time_s']:.0f}s", flush=True)
     if env is not None:
         env.close()
@@ -291,9 +312,9 @@ def main():
     print(f"report {rep}")
     if summary["over_eval_horizon"]:
         print(f"NOTE: longer than the {EVAL_MAX_STEPS}-step eval horizon: {summary['over_eval_horizon']}")
-    close_eval = [r["demo"] for r in report if r["nearest_eval_init_dist"] < 1e-3]
-    if close_eval:
-        print(f"NOTE: {len(close_eval)} demos start from (almost) an eval init state: {close_eval[:10]}...")
+    d = np.array([r["eval_layout_dist_cm"] for r in report])
+    print(f"start layout vs the 50 eval layouts (pan+moka xy, cm): min {d.min():.2f}, median "
+          f"{np.median(d):.2f}, max {d.max():.2f}; {int((d < 0.5).sum())} demos within 0.5 cm of an eval layout")
     try:
         from check_datasets import save_preview
         png = out.parent / f"{out.name}_preview.png"

@@ -5,6 +5,7 @@
 #
 # Usage (repo root, LeRobot env, GPU):
 #   bash train/eval.sh HuggingFaceVLA/smolvla_libero base
+#   bash train/eval.sh POLICY NAME --rename_map='{"a": "b"}'     # extra flags go to lerobot-eval
 #   bash train/eval.sh outputs/train/P/checkpoints/last/pretrained_model P
 #   bash train/eval.sh outputs/train/T/checkpoints/last/pretrained_model T
 #   python train/summarize_evals.py eval_logs            # table of all of them
@@ -19,6 +20,7 @@ cd "$(dirname "$0")/.."
 
 POLICY=${1:?usage: train/eval.sh POLICY_PATH NAME}
 NAME=${2:?usage: train/eval.sh POLICY_PATH NAME}
+shift 2
 N=${N_EPISODES:-50}
 ROOT=${EVAL_ROOT:-eval_logs}
 export MUJOCO_GL=${MUJOCO_GL:-egl}
@@ -46,7 +48,7 @@ for spec in "pan libero_90 21" "moka libero_10 2"; do
     --eval.n_episodes="$N" \
     --eval.batch_size=1 \
     --output_dir="$out" \
-    ${RES_ARGS[@]+"${RES_ARGS[@]}"} 2>&1 | tee "$out.log"
+    ${RES_ARGS[@]+"${RES_ARGS[@]}"} "$@" 2>&1 | tee "$out.log"
   printf '{"policy": "%s", "suite": "%s", "task_id": %s, "n_episodes": %s, "eval_res": "%s"}\n' \
     "$POLICY" "$suite" "$tid" "$N" "${EVAL_RES:-default}" > "$out.meta.json"
 done

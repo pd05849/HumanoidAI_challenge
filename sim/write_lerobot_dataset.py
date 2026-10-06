@@ -311,8 +311,10 @@ def verify(root, repo_id, sources, keys, fps, robot_type, like=None, png=None):
             from lerobot.datasets.feature_utils import features_equal_for_merge
             with open(like) as f:
                 src = json.load(f)
-            ok = features_equal_for_merge(src["features"], rd.meta.features)
-            same = dict(features=bool(ok), fps=src.get("fps") == rd.fps, robot_type=src.get("robot_type") == rd.meta.robot_type)
+            with open(os.path.join(root, "meta", "info.json")) as f:     # both as JSON (lists, not tuples)
+                ours = json.load(f)
+            ok = features_equal_for_merge(src["features"], ours["features"])
+            same = dict(features=bool(ok), fps=src.get("fps") == ours["fps"], robot_type=src.get("robot_type") == ours["robot_type"])
             res["merge_compatible_with_like"] = same
             if not all(same.values()):
                 P.append(f"not merge-compatible with {like}: {same}")

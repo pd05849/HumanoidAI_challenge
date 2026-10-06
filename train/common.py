@@ -250,6 +250,13 @@ def _encoder(video_info: dict | None, vcodec: str | None):
         return RGBEncoderConfig()
 
 
+def _same(a, b) -> bool:
+    try:
+        return float(a) == float(b)
+    except (TypeError, ValueError):
+        return str(a) == str(b)
+
+
 def harmonize_info(root, schema: Schema) -> list[str]:
     """Make our meta/info.json feature entries identical to the reference's wherever the merge
     compares them (names, legacy info keys), after checking that the video streams really agree.
@@ -280,7 +287,7 @@ def harmonize_info(root, schema: Schema) -> list[str]:
         if ref.get("dtype") == "video":
             mi, ri = mine.get("info") or {}, ref.get("info") or {}
             for s in VIDEO_STREAM_KEYS:
-                if s in ri and s in mi and str(ri[s]) != str(mi[s]):
+                if s in ri and s in mi and not _same(ri[s], mi[s]):
                     msg = f"{key}: {s} is {mi[s]!r} here but {ri[s]!r} in the reference"
                     if s == "video.codec":
                         print(f"WARNING: {msg} (decoding works per file; merge with "
