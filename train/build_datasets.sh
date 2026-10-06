@@ -12,7 +12,8 @@
 # Usage (repo root, LeRobot env with lerobot[libero,smolvla], GPU machine):
 #   PHONE_DEMOS=/path/to/make_demos_out bash train/build_datasets.sh      # npz episodes (sim/make_demos.py)
 #   PHONE_DATASET=/path/to/phone_pan bash train/build_datasets.sh         # or a LeRobot dataset built
-#                                       elsewhere with train/convert_phone_npz.py (same fps as moka!)
+#                                       elsewhere with train/convert_phone_npz.py; if its fps label or
+#                                       codec differs from moka's, it is re-written (conform_dataset.py)
 # Without either, only moka, teleop_pan and T are built (run it again later for P).
 # Steps whose output folder already exists are skipped; REBUILD=1 rebuilds everything.
 #
@@ -44,6 +45,22 @@ safe_rm() {  # remove a dataset folder this script created (and nothing else)
   fi
 }
 
+import_phone() {  # import_phone SRC NAME: copy a ready-made phone dataset and make it mergeable with moka
+  local src=$1 name=$2
+  safe_rm "$DATA/$name"
+  cp -r "$src" "$DATA/$name"
+  # Metadata only (names, info keys, robot_type). It refuses if fps, codec, shapes or streams
+  # differ; then the episodes are decoded and written again in moka's format (a few minutes).
+  if ! $PY train/check_datasets.py "$DATA/moka" "$DATA/$name" --harmonize --no-stats \
+      2>&1 | tee "$DATA/logs/$name.log"; then
+    echo "   metadata alone cannot match moka: re-writing $name in moka's format (conform_dataset.py)"
+    safe_rm "$DATA/$name"
+    $PY train/conform_dataset.py "$src" --like "$DATA/moka" --out "$DATA/$name" --overwrite \
+        2>&1 | tee -a "$DATA/logs/$name.log"
+    $PY train/check_datasets.py "$DATA/moka" "$DATA/$name" --no-stats 2>&1 | tee -a "$DATA/logs/$name.log"
+  fi
+}
+
 echo "== (a) moka subset from $SOURCE_REPO"
 if have "$DATA/moka"; then echo "   exists, skipped"; else
   $PY train/make_moka_subset.py --repo-id "$SOURCE_REPO" --out "$DATA/moka" --overwrite 2>&1 | tee "$DATA/logs/moka.log"
@@ -68,25 +85,14 @@ if [[ -n "$PHONE_DEMOS" ]]; then
   fi
 elif [[ -n "$PHONE_DATASET" ]]; then
   echo "== (c) phone-derived dataset from $PHONE_DATASET"
-  if have "$DATA/phone_pan"; then echo "   exists, skipped"; else
-    safe_rm "$DATA/phone_pan"
-    cp -r "$PHONE_DATASET" "$DATA/phone_pan"
-    # metadata only (names, info keys, robot_type); refuses if fps/shapes/streams differ
-    $PY train/check_datasets.py "$DATA/moka" "$DATA/phone_pan" --harmonize --no-stats \
-        2>&1 | tee "$DATA/logs/phone_pan.log"
-  fi
+  if have "$DATA/phone_pan"; then echo "   exists, skipped"; else import_phone "$PHONE_DATASET" phone_pan; fi
 else
   echo "== (c) neither PHONE_DEMOS nor PHONE_DATASET set: phone demos and run P skipped for now"
 fi
 
 if [[ -n "$PHONE_ALL_DATASET" ]]; then
   echo "== (c2) all phone-derived demos from $PHONE_ALL_DATASET"
-  if have "$DATA/phone_pan_all"; then echo "   exists, skipped"; else
-    safe_rm "$DATA/phone_pan_all"
-    cp -r "$PHONE_ALL_DATASET" "$DATA/phone_pan_all"
-    $PY train/check_datasets.py "$DATA/moka" "$DATA/phone_pan_all" --harmonize --no-stats \
-        2>&1 | tee "$DATA/logs/phone_pan_all.log"
-  fi
+  if have "$DATA/phone_pan_all"; then echo "   exists, skipped"; else import_phone "$PHONE_ALL_DATASET" phone_pan_all; fi
 fi
 
 SOURCES=("$DATA/moka" "$DATA/teleop_pan")

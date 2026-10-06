@@ -34,8 +34,9 @@ PHONE_ALL_DATASET=$CLIPS/datasets/phone_pan_all \
 ```
 
 They were written with `fps = 10`, the value the LeRobot LIBERO datasets are believed to use. If
-the build stops with an fps mismatch, check `meta/info.json` of the moka subset and ask for the
-phone datasets to be rewritten with its fps (the source episodes are kept for that).
+the moka subset turns out to use another fps label or video codec, the build script re-writes the
+phone datasets in moka's format by itself (`train/conform_dataset.py`, a few minutes; it prints
+"re-writing ... in moka's format").
 If the DGX Spark (ARM) cannot run the LIBERO simulator, build the datasets on the RTX machine
 (step (b) re-renders the teleop demos in LIBERO), copy `outputs/datasets/` to the Spark, train
 there, and evaluate on the RTX machine: training only needs the datasets. Use the same `STEPS`
@@ -129,16 +130,18 @@ If the npz episodes live on another machine (they are ~35 MB each), convert them
 only the LeRobot dataset (~2 MB per episode): `python train/convert_phone_npz.py MAKE_DEMOS_OUT
 --fps <the source fps from step 1> --max-episodes 50 --out phone_pan`, then pass
 `PHONE_DATASET=/path/to/phone_pan` instead of `PHONE_DEMOS`. The build script fixes the metadata
-spelling against the moka subset; a different fps is refused (rebuild with the right `--fps`).
+spelling against the moka subset; if the fps label or codec differs, it decodes the episodes and
+writes them again in moka's format (`train/conform_dataset.py`).
 
 | Step | Script | Output (`outputs/datasets/`) |
 |---|---|---|
 | (a) moka subset | `train/make_moka_subset.py` | `moka/`, `moka_subset.json`, `moka_preview.png` |
 | (b) teleop demos | `train/convert_teleop_hdf5.py` | `teleop_pan/`, `teleop_pan_report.json`, `teleop_pan_episode0.mp4` |
 | (c) phone demos | `train/convert_phone_npz.py` | `phone_pan/`, `phone_pan_report.json` |
+| (c) ready-made phone datasets | copy + `train/check_datasets.py --harmonize`, else `train/conform_dataset.py` | `phone_pan/`, `phone_pan_all/` |
 | check sources | `train/check_datasets.py` | `check_sources.png`, `check_sources.json` |
-| (d) merge | `lerobot-edit-dataset --operation.type merge` | `P/` = moka + phone_pan, `T/` = moka + teleop_pan |
-| pin stats | `train/pin_norm_stats.py` | `P/meta/stats.json`, `T/meta/stats.json` (originals kept as `stats.dataset.json`) |
+| (d) merge | `lerobot-edit-dataset --operation.type merge` | `P/` = moka + phone_pan, `Pall/` = moka + phone_pan_all, `T/` = moka + teleop_pan |
+| pin stats | `train/pin_norm_stats.py` | `meta/stats.json` of each run (originals kept as `stats.dataset.json`) |
 | check runs | `train/check_datasets.py` | `check_runs.png`, `check_runs.json` |
 
 Logs go to `outputs/datasets/logs/`. **Look at these before training:**
@@ -320,7 +323,7 @@ Start the build first; evaluate the base model while P trains.
 | Symptom | Fix |
 |---|---|
 | `ImportError: 'accelerate' is required` | `pip install -e ".[training]"` |
-| merge: `Same fps/robot_type/features is expected` | run `python train/check_datasets.py outputs/datasets/moka outputs/datasets/<other>`: it lists the differing entries. Metadata-only differences: add `--harmonize`. A different fps: rebuild that dataset (the converters take `--like`/`--fps`) |
+| merge: `Same fps/robot_type/features is expected` | run `python train/check_datasets.py outputs/datasets/moka outputs/datasets/<other>`: it lists the differing entries. Metadata-only differences: add `--harmonize`. A different fps or codec: `python train/conform_dataset.py <other> --like outputs/datasets/moka --out <new folder>` (or rebuild it with the converters' `--like`) |
 | converter: `cannot encode with {'vcodec': ...}` | the source codec is missing from PyAV's FFmpeg; pass `--vcodec libsvtav1` (decoding still works per file) |
 | teleop: `state dim ... != env state dim` | the HDF5 was recorded with a different LIBERO scene model than the installed `hf-libero`; neither mode can load its states. Check the `hf-libero` version against the one `lerobot[libero]` pins |
 | `FileExistsError: Output directory ... already exists` | a training run with that name exists; delete it or give a tag: `bash train/train.sh P run2` |
