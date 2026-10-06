@@ -21,6 +21,8 @@
 # Environment knobs:
 #   DATA=outputs/datasets  SOURCE_REPO=HuggingFaceVLA/libero  POLICY=HuggingFaceVLA/smolvla_libero
 #   PIN_STATS=1  MATCH_COUNTS=1 (cap the phone episodes at the number of teleop episodes)
+#   TELEOP_JOBS=4 (parallel processes replaying the 50 teleop demos; ~2 GB RAM each)
+#   TELEOP_HDF5=/path/to/the/downloaded.hdf5 (skip its download)  TELEOP_DEMOS=0-9 (a subset, for tests)
 #   TELEOP_ARGS="..." PHONE_ARGS="..." (extra flags for the converters)  PY=python
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -34,6 +36,7 @@ PHONE_DEMOS=${PHONE_DEMOS:-}
 PHONE_DATASET=${PHONE_DATASET:-}
 PHONE_ALL_DATASET=${PHONE_ALL_DATASET:-}
 PY=${PY:-python}
+TELEOP_JOBS=${TELEOP_JOBS:-4}
 export MUJOCO_GL=${MUJOCO_GL:-egl}
 mkdir -p "$DATA" "$DATA/logs"
 
@@ -78,10 +81,53 @@ if have "$DATA/moka"; then echo "   exists, skipped"; else
 fi
 
 echo "== (b) teleop frying-pan demos (LIBERO-90 task 21)"
-if have "$DATA/teleop_pan"; then echo "   exists, skipped"; else
+if have "$DATA/teleop_pan"; then echo "   exists, skipped"
+elif [[ "$TELEOP_JOBS" -le 1 || "${TELEOP_ARGS:-}" == *--demos* || "${TELEOP_ARGS:-}" == *--hdf5* ]]; then
   # shellcheck disable=SC2086
   $PY train/convert_teleop_hdf5.py --like "$DATA/moka" --out "$DATA/teleop_pan" --overwrite --video \
       ${TELEOP_ARGS:-} 2>&1 | tee "$DATA/logs/teleop_pan.log"
+else
+  # Each demo is replayed in the simulator (~2 min each on one core): split the demos over
+  # TELEOP_JOBS processes, then merge the parts in demo order.
+  H=${TELEOP_HDF5:-$($PY -c "import sys; sys.path.insert(0, 'train'); import convert_teleop_hdf5 as c; from huggingface_hub import hf_hub_download as d; print(d(c.HF_REPO, c.HF_FILE, repo_type='dataset'))" | tail -1)}
+  N_DEMOS=$($PY -c "import sys, h5py; print(len(h5py.File(sys.argv[1], 'r')['data']))" "$H")
+  LO=0; HI=$(( N_DEMOS - 1 ))
+  if [[ -n "${TELEOP_DEMOS:-}" ]]; then LO=${TELEOP_DEMOS%-*}; HI=${TELEOP_DEMOS#*-}; fi   # e.g. 0-9 (testing)
+  NJ=$(( HI - LO + 1 ))
+  PARTS="$DATA/.teleop_parts"; rm -rf "$PARTS"; mkdir -p "$PARTS"
+  echo "   demos $LO-$HI in $TELEOP_JOBS parallel parts (logs: $DATA/logs/teleop_pan.part*.log)"
+  pids=(); roots=(); ids=()
+  for ((k = 0; k < TELEOP_JOBS; k++)); do
+    a=$(( LO + k * NJ / TELEOP_JOBS )); b=$(( LO + (k + 1) * NJ / TELEOP_JOBS - 1 ))
+    (( b >= a )) || continue
+    vid=(); (( k == 0 )) && vid=(--video)
+    # shellcheck disable=SC2086
+    $PY train/convert_teleop_hdf5.py --hdf5 "$H" --like "$DATA/moka" --out "$PARTS/part$k" --overwrite \
+        --demos "$a-$b" ${vid[@]+"${vid[@]}"} ${TELEOP_ARGS:-} > "$DATA/logs/teleop_pan.part$k.log" 2>&1 &
+    pids+=($!); roots+=("'$PARTS/part$k'"); ids+=("'local/teleop_part$k'")
+  done
+  fail=0
+  for pid in "${pids[@]}"; do wait "$pid" || fail=1; done
+  if (( fail )); then echo "   a teleop part failed: see $DATA/logs/teleop_pan.part*.log"; exit 1; fi
+  safe_rm "$DATA/teleop_pan"
+  lerobot-edit-dataset --new_repo_id local/teleop_pan --new_root "$DATA/teleop_pan" \
+      --operation.type merge --operation.repo_ids "[$(IFS=,; echo "${ids[*]}")]" \
+      --operation.roots "[$(IFS=,; echo "${roots[*]}")]" --operation.concatenate_videos false \
+      > "$DATA/logs/teleop_pan.log" 2>&1
+  # one report for all parts (per-demo replay mode, distance to the eval layouts, ...)
+  $PY - "$DATA" "$PARTS" <<'PYEOF'
+import glob, json, sys
+data, parts = sys.argv[1], sys.argv[2]
+reps = [json.load(open(p)) for p in sorted(glob.glob(f"{parts}/part*_report.json"), key=lambda p: int(p.rsplit("part", 1)[1].split("_")[0]))]
+out = dict(reps[0]); out["demos"] = [d for r in reps for d in r.get("demos", [])]
+for k in ("n_demos", "n_kept", "n_actions_mode", "n_states_mode", "n_frames", "over_eval_horizon", "wall_s"):
+    if all(isinstance(r.get(k), (int, float)) for r in reps):
+        out[k] = sum(r[k] for r in reps)
+json.dump(out, open(f"{data}/teleop_pan_report.json", "w"), indent=1)
+print(f"   merged {len(reps)} parts: {out.get('n_kept')} of {out.get('n_demos')} demos kept")
+PYEOF
+  cp "$PARTS/part0_episode0.mp4" "$DATA/teleop_pan_episode0.mp4" 2>/dev/null || true
+  rm -rf "$PARTS"
 fi
 N_T=$(n_episodes "$DATA/teleop_pan")
 

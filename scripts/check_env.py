@@ -71,3 +71,4 @@ if not ok:
     print('\nFix missing packages with:  pip install "lerobot[libero,smolvla,training]"'
           "\nIf only rendering fails: on an NVIDIA machine set MUJOCO_GL=egl; without one, "
           "sudo apt install libosmesa6 and set MUJOCO_GL=osmesa.")
+sys.exit(0 if ok else 1)
