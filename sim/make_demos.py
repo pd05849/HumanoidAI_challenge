@@ -8,12 +8,20 @@ usage (LIBERO venv, Python 3.11):
       [--states-from sampled|eval] [--skip-existing]
 
 Per (take, layout) episode:
+  * Env. Built exactly like LeRobot's LiberoEnv: OffScreenRenderEnv(bddl, 256x256 cameras,
+    control_freq=20) with LIBERO's default initialization_noise (None -> magnitude 0). This
+    matters: robosuite's OSC controller pulls the arm towards controller.initial_joint (its
+    nullspace posture target), which a hard reset sets from the (noisy) reset joints; with
+    robosuite noise on, the controller target would differ from eval, the arm drifts ~7 mm
+    differently in the 10 settle steps, and the recorded actions would not replay in LiberoEnv.
   * Layout. --states-from sampled (default): a FRESH env is seeded (env.seed(s), i.e. numpy's
     global RNG, which LIBERO's BDDL region samplers use) and hard-reset, so LIBERO samples a
-    new placement of the pan, moka pot and stove from the task's BDDL regions; the robot's
-    start joints get N(0, 0.02 rad) noise like the 50 eval init states (their empirical
-    spread is 0.021 rad per joint). The layout is the flattened MuJoCo state right after
-    that reset. Its distance to the 50 fixed eval init states (pan and moka xy) is reported
+    new placement of the pan, moka pot and stove from the task's BDDL regions. The layout is
+    the flattened MuJoCo state right after that reset, with N(0, 0.02 rad) noise (own RNG,
+    seeded by s) added to the robot's 7 arm joints like the 50 eval init states (their
+    empirical spread is 0.021 rad per joint), so the controller target stays the nominal
+    posture, as in eval where the noisy eval state is loaded with set_init_state. Its
+    distance to the 50 fixed eval init states (pan and moka xy) is reported
     (and can be enforced with --min-eval-dist). --states-from eval uses eval init state
     (seed mod 50) instead (for comparison runs only: those are the test layouts).
     NB the stove is a LIBERO fixture: its pose is set in the model at reset (seeded), it is
@@ -41,6 +49,8 @@ Recorded at every control step, in LeRobot LIBERO conventions (what the policy s
   step   (T,)  int32    control step index (0 = first step after the 10 settle steps)
   phase  (T,)  int8     0 knob, 1 grasp, 2 carry, 3 place, 4 idle
   + init_state (flattened MuJoCo state), stove_pos, stove_quat (the fixture pose of this layout)
+  + eef_pos_raw (T,3), eef_quat_raw (T,4) xyzw, gripper_qpos_raw (T,2) float64: the raw robot
+    state, so the LeRobot writer can recompute observation.state with LeRobot's own function
   task string = "turn on the stove and put the frying pan on it", fps = 20.
   Frame t pairs the observation BEFORE action t with action t. No-op frames are dropped
   as in the OpenVLA/LeRobot LIBERO data: |action[:6]| < 1e-4 and gripper equal to the
@@ -82,8 +92,9 @@ TASK = "turn on the stove and put the frying pan on it"
 CAM = 256
 FPS = 20
 DUMMY_ACTION = np.array([0, 0, 0, 0, 0, 0, -1.0])     # lerobot get_libero_dummy_action()
-INIT_NOISE = {"magnitude": 0.02, "type": "gaussian"}  # robot start-joint noise of the eval states
+INIT_NOISE = 0.02                                      # rad, robot start-joint noise of the eval states
 PHASES = ("knob", "grasp", "carry", "place", "idle")
+GEN_VERSION = "2026-10-06b"    # eval-identical env (no robosuite init noise); --skip-existing reuses only this version
 PAN_JOINT, MOKA_JOINT = "chefmate_8_frypan_1_joint0", "moka_pot_1_joint0"
 ROBOT_Q0 = np.array([0.0, -0.161, 0.0, -2.4446, 0.0, 2.2268, 0.7854])   # LIBERO Panda init_qpos
 
@@ -122,7 +133,8 @@ class RecordingRobot(C.Robot):
         self.obs = obs0
         self.images = images
         self.phase = phase
-        self.rec = dict(state=[], action=[], phase=[], image=[], image2=[])
+        self.rec = dict(state=[], action=[], phase=[], image=[], image2=[],
+                        eef_pos_raw=[], eef_quat_raw=[], gripper_qpos_raw=[])
 
     def step(self, action):
         if self.steps >= self.max_steps:
@@ -130,6 +142,9 @@ class RecordingRobot(C.Robot):
         a = np.clip(np.asarray(action, dtype=float), -1.0, 1.0)
         r = self.rec
         r["state"].append(lerobot_state(self.obs))
+        r["eef_pos_raw"].append(np.array(self.obs["robot0_eef_pos"], np.float64))
+        r["eef_quat_raw"].append(np.array(self.obs["robot0_eef_quat"], np.float64))
+        r["gripper_qpos_raw"].append(np.array(self.obs["robot0_gripper_qpos"], np.float64))
         r["action"].append(a.astype(np.float32))
         r["phase"].append(PHASES.index(self.phase["name"]))
         if self.images:
@@ -155,10 +170,12 @@ def libero_task():
 
 
 def make_env(images):
+    """As lerobot.envs.libero.LiberoEnv builds it (NO robosuite initialization_noise: see the
+    module docstring); use_camera_obs=False only for the camera-free prescreen."""
     from libero.libero.envs import OffScreenRenderEnv
     bddl, _, _ = libero_task()
     return OffScreenRenderEnv(bddl_file_name=bddl, camera_heights=CAM, camera_widths=CAM,
-                              use_camera_obs=images, initialization_noise=INIT_NOISE)
+                              use_camera_obs=images, control_freq=FPS)
 
 
 def layout_of(env, init):
@@ -186,12 +203,16 @@ def eval_distance(layout, evals):
 
 
 def reset_layout(env, job, seed):
-    """Seeded hard reset (samples placements, stove, robot noise); returns the init state."""
+    """Seeded hard reset (samples the object placements and the stove fixture pose); returns the
+    init state: the reset state + N(0, INIT_NOISE) on the 7 arm joints (sampled), or an eval state."""
     env.seed(int(seed))
     env.reset()
     if job["states_from"] == "eval":
         return libero_task()[2][int(seed) % 50].copy()
-    return np.asarray(env.env.sim.get_state().flatten()).copy()
+    init = np.asarray(env.env.sim.get_state().flatten()).copy()
+    qidx = 1 + np.asarray(env.env.robots[0]._ref_joint_pos_indexes)     # [time, qpos, qvel]
+    init[qidx] += np.random.default_rng([int(seed), 20261006]).normal(0.0, INIT_NOISE, len(qidx))
+    return init
 
 
 # ============================================================================ one episode
@@ -277,7 +298,8 @@ def save_episode(path_npz, rec, res, job):
         state=np.stack(rec["state"])[keep], action=np.stack(actions)[keep],
         step=keep.astype(np.int32), phase=np.asarray(rec["phase"], np.int8)[keep],
         init_state=np.asarray(rec["init_state"], np.float64),
-        stove_pos=np.asarray(res["layout"]["stove_pos"]), stove_quat=np.asarray(res["layout"]["stove_quat"]))
+        stove_pos=np.asarray(res["layout"]["stove_pos"]), stove_quat=np.asarray(res["layout"]["stove_quat"]),
+        **{k: np.stack(rec[k])[keep] for k in ("eef_pos_raw", "eef_quat_raw", "gripper_qpos_raw")})
     tmp = path_npz + ".tmp.npz"
     np.savez_compressed(tmp, **arrays)
     os.replace(tmp, path_npz)
@@ -288,6 +310,18 @@ def save_episode(path_npz, rec, res, job):
 
 
 _REAL = {}
+
+
+def reject_reason(res, job):
+    """Why a successful episode is still not kept (None = keep): the moka pot was knocked
+    (> 10 mm / > 10 deg), or the pan did not follow the mapped real path (carry tracking RMS
+    above --max-track-cm, typically a grasp that let the pan swing / pivot in the hand)."""
+    if job["reject_moka_disturbed"] and res["moka"]["disturbed"]:
+        return "moka pot disturbed"
+    rms = (res.get("metrics") or {}).get("rms_sync_3d_cm")
+    if job.get("max_track_cm", 0) > 0 and (rms is None or rms > job["max_track_cm"]):
+        return f"carry tracking RMS {rms if rms is None else round(rms, 2)} cm > {job['max_track_cm']} cm"
+    return None
 
 
 def run_job(job):
@@ -303,8 +337,8 @@ def run_job(job):
         if job["prescreen"]:
             pre, pre_rec = run_episode(job, R, cfg, images=False)
             pre["actions_sha"] = zlib.crc32(np.stack(pre_rec["action"]).tobytes()) if pre_rec["action"] else None
-        if pre is not None and not pre["success"]:
-            res = pre
+        if pre is not None and (not pre["success"] or reject_reason(pre, job)):
+            res = pre                # failed (or would be rejected): no recorded run
         else:
             res, rec = run_episode(job, R, cfg, images=True, seed=None if pre is None else pre["seed"])
             if pre is not None:
@@ -312,8 +346,12 @@ def run_job(job):
                 res["prescreen"] = dict(success=pre["success"], steps=pre["steps"],
                                         identical_actions=bool(sha == pre["actions_sha"]),
                                         time=pre["time"])
-        keep = res["success"] and not (job["reject_moka_disturbed"] and res["moka"]["disturbed"])
-        meta = dict(name=name, take=job["take"], source_path=job["path"], layout_index=job["layout_index"],
+        why = reject_reason(res, job) if res["success"] else None
+        keep = bool(res["success"] and why is None)
+        if why:
+            res["status"] = f"{res['status']}; not kept: {why}"
+        meta = dict(name=name, generator_version=GEN_VERSION, take=job["take"], source_path=job["path"],
+                    layout_index=job["layout_index"],
                     states_from=job["states_from"], task=TASK, fps=FPS, kept=bool(keep),
                     replay_config=job["cfg"], settle_steps=job["settle"], max_steps=job["max_steps"],
                     image_convention="obs[cam][::-1, ::-1] (rotated 180 deg, = LiberoProcessorStep / "
@@ -506,8 +544,14 @@ def main():
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--no-prescreen", action="store_true", help="record every episode directly")
     ap.add_argument("--skip-existing", action="store_true", help="skip episodes with an existing json")
-    ap.add_argument("--reject-moka-disturbed", action="store_true",
-                    help="also drop successes where the moka pot moved > 10 mm or tilted > 10 deg")
+    ap.add_argument("--keep-moka-disturbed", action="store_true",
+                    help="also keep successes where the moka pot moved > 10 mm or tilted > 10 deg "
+                         "(default: such episodes are not kept and the layout is replaced)")
+    ap.add_argument("--reject-moka-disturbed", action="store_true", help=argparse.SUPPRESS)  # now the default
+    ap.add_argument("--max-track-cm", type=float, default=2.0,
+                    help="do not keep successes whose carry tracking RMS (sim pan vs mapped real path) is "
+                         "above this (cm; 0 = no limit). Good grasps track at 0.2-1.2 cm; > 2 cm means "
+                         "the pan swung in the grasp and the path was not reproduced")
     ap.add_argument("--max-steps", type=int, default=520,
                     help="control-step budget after the settle steps (LeRobot eval horizon: libero_90 400, "
                          "libero_10 520; check first_success_step against the one you evaluate with)")
@@ -565,7 +609,8 @@ def main():
         return dict(take=tk["take"], path=tk["path"], layout_index=j, seed=seed,
                     states_from=args.states_from, min_eval_dist=args.min_eval_dist,
                     settle=args.settle, max_steps=args.max_steps, prescreen=not args.no_prescreen,
-                    reject_moka_disturbed=args.reject_moka_disturbed, cfg=cfg.as_dict(), out=out)
+                    reject_moka_disturbed=not args.keep_moka_disturbed, max_track_cm=args.max_track_cm,
+                    cfg=cfg.as_dict(), out=out)
 
     def existing(jb):
         for sub in ("episodes", "failed"):
@@ -573,8 +618,8 @@ def main():
             if os.path.exists(p):
                 with open(p) as f:
                     m = json.load(f)
-                if "traceback" not in m:          # errors are retried
-                    return m
+                if "traceback" not in m and m.get("generator_version") == GEN_VERSION:
+                    return m                  # errors and results of older generator versions are redone
         return None
 
     print(f"{len(takes)} takes x {args.layouts} kept layouts each (at most {max_att} attempts per take), "

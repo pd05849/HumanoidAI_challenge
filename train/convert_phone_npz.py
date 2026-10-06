@@ -26,7 +26,6 @@ Writes OUT/ (LeRobot dataset), OUT_report.json and OUT_preview.png next to it.
 import argparse
 import glob
 import json
-import os
 import sys
 import time
 from collections import defaultdict
