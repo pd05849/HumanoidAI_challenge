@@ -6,11 +6,11 @@ identical except for where the frying-pan demos come from:
 | Run | Frying-pan demos ("turn on the stove and put the **frying pan** on it") | Moka demos ("...put the **moka pot** on it") |
 |---|---|---|
 | **T** (teleop) | the 50 human teleop demos LIBERO ships for LIBERO-90 task 21 | all LIBERO-10 task 2 demos from the LeRobot LIBERO dataset |
-| **P** (phone, same count) | as many phone-derived robot demos as T has teleop demos (`sim/make_demos.py`, round-robin over the 18 takes) | the same moka demos |
-| **Pall** (phone, all) | every phone-derived robot demo (18 takes x several layouts) | the same moka demos |
+| **P** (phone, same count) | as many phone-derived robot demos as T has teleop demos (`sim/make_demos.py`, round-robin over the takes) | the same moka demos |
+| **Pall** (phone, all) | every phone-derived robot demo (153: 17 takes x 9 layouts) | the same moka demos |
 
 P vs T asks whether phone-derived demos are as good as teleoperated ones at equal count; Pall vs P
-asks what multiplying 20 minutes of video into more demos buys.
+asks what multiplying 6 minutes of video (18 clips) into more demos buys.
 
 ## Quick start: two machines
 
@@ -47,7 +47,7 @@ schedule and normalization statistics, and are evaluated, together with the unto
 both instructions in the same kitchen (LIBERO-90 task 21 and LIBERO-10 task 2, all 50 start
 layouts each).
 
-Everything runs on the GPU machine (LeRobot 0.6.2, Hugging Face Hub access), from the repository
+Everything runs on the GPU machine (LeRobot 0.6.x, Hugging Face Hub access), from the repository
 root. The scripts are in [`train/`](../train); nothing here needs to be edited.
 
 ```mermaid
@@ -165,7 +165,7 @@ Logs go to `outputs/datasets/logs/`. **Look at these before training:**
 Episode counts: `MATCH_COUNTS=1` (default) caps the phone episodes at the number of teleop
 episodes, taking them round-robin over the takes, so P and T have the same number of frying-pan
 episodes. If there are fewer phone episodes than teleop ones, either generate more layouts
-(`sim/make_demos.py --layouts 3`) or cap the teleop demos with `TELEOP_ARGS="--demos 0-<N-1>"`.
+(the README's `sim/make_demos.py ... --layouts 3 --speedup 1.5 --max-steps 400` with a new `--seed`) or cap the teleop demos with `TELEOP_ARGS="--demos 0-<N-1>"`.
 
 ## 3. Train (2-4 h per run)
 
@@ -207,12 +207,12 @@ lerobot-train \
 | Setting | Value | Why |
 |---|---|---|
 | start | `HuggingFaceVLA/smolvla_libero` | the model under test; its own config (frozen vision encoder, action-expert training, optimizer preset) is kept |
-| steps, batch | 20 000 x 32 (adjust after the timing run, same for P and T) | ~25 epochs of a ~25k-frame dataset, in the range LeRobot's SmolVLA fine-tuning examples use |
+| steps, batch | 20 000 x 32 (adjust after the timing run, same for every run) | ~25 epochs of a ~25k-frame dataset, in the range LeRobot's SmolVLA fine-tuning examples use |
 | learning rate | the policy's preset (AdamW, cosine with warmup) | LeRobot shrinks warmup and decay to the run length when it is shorter than the preset's decay steps |
 | normalization | smolvla_libero's own state/action mean and std, written into both datasets | see "Normalization" below |
 | `n_action_steps`, `num_steps` | 10, 10 | only used at inference; stored in the checkpoint's config so that eval defaults match |
-| seed | 1000 | same data order and random draws for both runs |
-| checkpoints | every 5 000 steps + last | report `last` for both runs; picking the best checkpoint on the test tasks would be tuning on the test set |
+| seed | 1000 | same random draws for every run |
+| checkpoints | every 5 000 steps + last | report `last` for every run; picking the best checkpoint on the test tasks would be tuning on the test set |
 
 ## 4. Evaluate (20-30 min per policy)
 
@@ -297,11 +297,11 @@ really agree. The merge keeps one video file per source (`--operation.concatenat
 which avoids stream concatenation between differently encoded files.
 
 **Normalization.** When `lerobot-train` fine-tunes from a pretrained policy, it replaces the
-policy's normalization statistics with the training dataset's `meta/stats.json`. P and T would
+policy's normalization statistics with the training dataset's `meta/stats.json`. T, P and Pall would
 then normalize state and action differently from each other and from pretraining (scripted and
 human demos can have quite different action statistics). `train/pin_norm_stats.py` writes smolvla_libero's
-own state/action mean and std (read from its `policy_preprocessor` files) into both merged
-datasets, so normalization is identical in both runs and equal to the pretrained model's.
+own state/action mean and std (read from its `policy_preprocessor` files) into every merged
+dataset, so normalization is identical in all runs and equal to the pretrained model's.
 `PIN_STATS=0` turns this off; `python train/pin_norm_stats.py --dataset outputs/datasets/P --restore`
 undoes it.
 
@@ -328,7 +328,7 @@ Start the build first; evaluate the base model while P trains.
 | teleop: `state dim ... != env state dim` | the HDF5 was recorded with a different LIBERO scene model than the installed `hf-libero`; neither mode can load its states. Check the `hf-libero` version against the one `lerobot[libero]` pins |
 | `FileExistsError: Output directory ... already exists` | a training run with that name exists; delete it or give a tag: `bash train/train.sh P run2` |
 | eval jsonl has more than 50 lines | an old log was appended to; `train/eval.sh` deletes it first, so rerun through `eval.sh` with `FORCE=1` |
-| CUDA out of memory | `BATCH=16 STEPS=<2x>` (same for both runs) |
+| CUDA out of memory | `BATCH=16 STEPS=<2x>` (same for every run) |
 
 ## 8. What was tested in the build container, and what was not
 
