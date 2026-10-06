@@ -116,6 +116,10 @@ Good to know:
 | `scripts/render_scenes.py`, `render_all_parallel.py`, `make_sheets.py` | Pictures of all 130 LIBERO tasks |
 | `scripts/make_markers.py`, `assets/markers_letter.pdf` | Printable markers for filming |
 | `scripts/check_markers.py` | Checks a test clip from the filming setup: are the board and the pan marker found? |
+| `scripts/calibrate_camera.py`, `data/calibration/ipad_1080p.json` | Camera calibration from clips of the board, and the result for the iPad used |
+| `scripts/track_pan.py` | Tracks the pan in a clip: its 3-D path relative to the board, phases, quality numbers (`path.json`) |
+| `scripts/render_tracking.py` | Draws the tracked path back onto the clip to check the tracking by eye |
+| `scripts/summarize_tracks.py` | One figure and a quality table for all tracked takes |
 | `sim/kitchen_controller.py` | Motion pieces in the simulator: knob turn, pan grasp, carry along a given path, place |
 | `sim/run_controller_eval.py` | Runs those pieces on LIBERO's start layouts and reports success |
 | `docs/how-it-works.md` | How phone clips become robot demos, with references |
