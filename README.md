@@ -6,9 +6,9 @@ phone clips (about 6 minutes of video).**
 ## In short
 
 - **Finding:** the public model `smolvla_libero` does LIBERO's "turn on the stove and put the
-  **moka pot** on it" (2/3 tries), but change one word to "**frying pan**" (same kitchen, a LIBERO
-  task it never trained on) and it succeeds **0/10** times and never picks up the pan. It follows
-  the scene, not the words.
+  **moka pot** on it" (26/50 test layouts), but change one word to "**frying pan**" (same
+  kitchen, a LIBERO task it never trained on) and it succeeds **0/50** times: it never picks up
+  the pan, and when it lifts anything, it is the moka pot. It follows the scene, not the words.
 - **Idea:** teach the missing word with phone videos of me moving a real pan in my kitchen.
   Printed markers give the pan's 3-D path; a simulated robot re-enacts each path in LIBERO's
   kitchen, with physics, over many new arrangements of the objects; the successes become
@@ -16,8 +16,18 @@ phone clips (about 6 minutes of video).**
 - **Comparison:** fine-tune on LIBERO's 50 human-teleoperated demos (**T**), on 50 phone-derived
   demos (**P**), or on all of them (**Pall**), and test every model on both instructions in
   LIBERO's 50 test layouts.
-- **Status:** clips recorded, tracked and turned into robot demos; fine-tuning and evaluation are
-  next, and the results will be filled in below.
+- **Result:** every fine-tune now follows the word, in both directions, and keeps the original
+  task. Phone demos take the frying pan from **0 to 62%** (Pall) against **90%** with LIBERO's
+  human demos. Where the moka pot does not start close to the pan, the phone-trained model is as
+  good as the human-trained one (23/25 vs 24/25); it loses in the tight layouts, which the phone
+  demos under-represent ([section 4](#4-results)).
+
+| Success in LIBERO's 50 test layouts | "…put the **frying pan** on it" | "…put the **moka pot** on it" |
+|---|---|---|
+| unchanged `smolvla_libero` | **0/50** | 26/50 |
+| **T**: + 50 human teleoperation demos | **45/50** | 35/50 |
+| **P**: + 50 phone-derived demos | **18/50** | 32/50 |
+| **Pall**: + 153 phone-derived demos | **31/50** | 34/50 |
 
 ---
 
@@ -53,7 +63,7 @@ files differ only in the goal; their fixed start layouts differ by a few cm). If
 **reads** the instruction it should pick up the frying pan; if it **replays its memory** of this
 kitchen it goes for the moka pot.
 
-**Result (unchanged model):**
+**First look (unchanged model, a few tries):**
 
 | Instruction | Tries | Success | What happened |
 |---|---|---|---|
@@ -62,9 +72,9 @@ kitchen it goes for the moka pot.
 | **Twin**: "…put the frying pan on it" | 10 | **0/10** | never picked up the pan; sometimes went for the moka pot; often missed the stove knob |
 
 **Change one word and the model stops working.** The twin task is officially part of LIBERO (it
-even ships 50 demonstrations for it); the model just never trained on it. These are small numbers
-(3 and 10 tries); the final evaluation repeats both instructions on all 50 test layouts. LIBERO
-gives the twin task 400 control steps (20 s) and the moka-pot task 520.
+even ships 50 demonstrations for it); the model just never trained on it. The full evaluation on
+all 50 test layouts ([section 4](#4-results)) confirms it: 0/50 on the frying pan, 26/50 on the
+moka pot. LIBERO gives the twin task 400 control steps (20 s) and the moka-pot task 520.
 
 ## 2. The idea: teach the missing word with a phone
 
@@ -161,8 +171,9 @@ only way to tell them apart.
 | **P** | **50** phone-derived demos (spread evenly over the takes) | are phone demos as good as teleop demos at the same count? |
 | **Pall** | **all 153** phone-derived demos | what does multiplying 6 minutes of video buy? |
 
-All runs use the same training steps and settings; Pall therefore sees each of its demos less
-often than P does.
+All runs use the same training steps and settings (20 000 steps, batch 32). Pall therefore sees
+each of its demos less often than P does (about 12 passes over its data instead of 26), and its 41
+moka-pot demos are a smaller share of its training episodes (21 % instead of 45 %).
 
 Every model, and the unchanged one, is then tested on **both instructions** in LIBERO's 50 fixed
 test layouts, recording success and which object it picked up first:
@@ -210,8 +221,84 @@ pace of my video (sped up 1.5x).
 
 ## 4. Results
 
-*Coming after training.* The table will compare the unchanged model, T, P and Pall on both
-instructions: success rate and which object each picked up first.
+Every model was tested on both instructions in the same 50 LIBERO test layouts, one try per
+layout. Per-try logs: [`results/`](results/); the summary with every pairwise test:
+[`results/summary.md`](results/summary.md); every other number in this section:
+`python scripts/analyze_results.py`.
+
+| Successes out of 50 (95 % interval) | "…put the **frying pan** on it" (new) | "…put the **moka pot** on it" (original) |
+|---|---|---|
+| unchanged `smolvla_libero` | **0/50** (0-7 %) | 26/50 (39-65 %) |
+| **T**: + 50 human teleoperation demos | **45/50** (79-96 %) | 35/50 (56-81 %) |
+| **P**: + 50 phone-derived demos | **18/50** (24-50 %) | 32/50 (50-76 %) |
+| **Pall**: + 153 phone-derived demos | **31/50** (48-74 %) | 34/50 (54-79 %) |
+
+| First object lifted (> 3 cm) | told "frying pan": pan / moka pot / nothing | told "moka pot": moka pot / pan / nothing |
+|---|---|---|
+| unchanged | 0 / 12 / 38 | 28 / 0 / 22 |
+| T | 46 / 0 / 4 | 35 / 0 / 15 |
+| P | 23 / 0 / 27 | 32 / 0 / 18 |
+| Pall | 32 / 1 / 17 | 36 / 0 / 14 |
+
+**1. The unchanged model follows the scene.** Told "frying pan", it never lifts the pan; when it
+lifts anything, it is the moka pot (12 of 50 tries).
+
+**2. Every fine-tune follows the word, in both directions, and keeps the old task.** Told "frying
+pan", they go for the pan (the moka pot came first in 1 of 150 tries); told "moka pot", they
+never lift the pan first. Moka-pot success stays at 64-70 % against 52 % before (none of these
+differences is significant, p ≥ 0.1). Training on both instructions in the same kitchen made
+the instruction matter, without costing the original skill.
+
+**3. Phone demos teach the new instruction, less well than human robot demos.** Frying pan: 36 %
+with 50 phone demos, 62 % with 153, 90 % with LIBERO's 50 teleoperation demos (all far above 0:
+p < 1e-5; T vs Pall p = 0.002; Pall vs P p = 0.016). The phone-trained models rarely fail by
+picking the wrong object: they fail without ever lifting the pan (P: 27 of its 32 failures;
+Pall: 18 of 19).
+
+**4. They lose in the tight layouts.** Splitting the 50 test layouts by how far the moka pot
+starts from the pan (distance between their centres; median 27 cm):
+
+| Frying-pan success | moka pot closer (22-27 cm) | moka pot farther (27-31 cm) |
+|---|---|---|
+| T | 21/25 | 24/25 |
+| P | 4/25 | 14/25 |
+| Pall | 8/25 | **23/25** |
+
+When the moka pot is farther away, the model trained on phone demos is as good as the one trained
+on human demos (23/25 vs 24/25). When it is close, Pall bumps the moka pot (moved > 1 cm in 12 of
+the 25 closer tries, 1 of the 25 farther ones) and mostly fails (8/25; closer vs farther p =
+0.00002). T barely notices (21/25 vs 24/25, p = 0.35). The phone demos contain fewer of these
+starts: 9 % of them start with the moka pot closer than 25 cm, against 18 % of the test layouts
+and 22 % of LIBERO's human demos, most likely because the demo generator drops arrangements in
+which its scripted grasp disturbs the moka pot or lets the pan slip (see
+[what didn't work](#what-worked-and-what-didnt-so-far)). The fix for a next version is in the
+data, not the model: keep (or recover) those tight arrangements.
+
+**5. The models learned the rhythm of their demos.** The phone-trained models turn the knob and
+lift the pan earlier than T (median first lift at step 160 and 162, i.e. 8.0 and 8.1 s,
+against 194, 9.7 s), as the phone demos grasp earlier than the human ones (6.9 s vs 9.2 s, section 3).
+
+**Training loss.** All three runs converged (20 000 steps, batch 32, about 4 h each on an H100,
+P and Pall sharing one; data loading, not the GPU, set the pace).
+
+![Training loss of T, P and Pall on a log scale: all three fall steeply in the first 1 000 steps, then slowly, and flatten over the last 5 000 steps at 0.058 (P), 0.075 (T) and 0.080 (Pall)](docs/img/train_loss.png)
+
+*P ends with the lowest loss (0.058; T 0.075, Pall 0.080) yet the lowest success of the three,
+most likely because its scripted demos are more consistent and so easier to fit. The loss is measured on each run's own
+data, so it shows convergence, not which model is better. Table: [train_loss.md](docs/img/train_loss.md).*
+
+**How to read these numbers**
+- 50 tries per cell: the 95 % interval is about ±14 points around 50 %, so only differences with
+  p < 0.05 (two-sided Fisher exact test) are called differences above.
+- Pall differs from P in more than the number of demos: more start layouts, about half as many
+  passes over its data, and a smaller moka-pot share. "More phone demos helped" is the result;
+  it is not attributable to the count alone.
+- In the phone demos the knob turn and the grasp are scripted and the video supplies the carry,
+  so P vs T compares "scripted robot + phone path" with human teleoperation, not video alone.
+- One person, one kitchen, one pan, one pair of instructions, in simulation.
+- Evaluation: [`train/eval.sh`](train/eval.sh) (`lerobot-eval` with a per-try log),
+  `n_action_steps=10`, `num_steps=10`, LIBERO's step limits (400 frying pan, 520 moka pot),
+  LeRobot's default render size; run on a laptop GPU (RTX 3050, 4 GB) with LeRobot 0.6.2.
 
 ## What worked, and what didn't (so far)
 
@@ -325,6 +412,7 @@ python train/convert_phone_npz.py demos/r0 demos/r1 demos/r2 --fps 10 --out data
 | `sim/write_lerobot_dataset.py` | A second LeRobot dataset writer for the demos, with a reload check |
 | `sim/run_controller_eval.py` | Success rate of the scripted controller alone on the twin task (development check) |
 | `scripts/compare_demos.py` | LIBERO's teleop demos vs the phone-derived demos: side-by-side video, gripper-path figure, table |
+| `scripts/analyze_results.py`, `results/` | Per-try evaluation logs of the four models, their summary, and the analysis behind README section 4 |
 | `scripts/plot_loss.py` | Training-loss curves and table of the fine-tunes, from the lerobot-train logs |
 | `train/` | Dataset building (moka subset, teleop demos, phone demos, merges), training and evaluation scripts |
 | `scripts/eval_with_log.py`, `scripts/watch_eval.py` | LeRobot evaluation with a per-try behaviour log / a live window |
