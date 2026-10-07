@@ -3,6 +3,13 @@
 **A one-word test for a robot foundation model, and teaching it the missing word with 18 short
 phone clips (about 6 minutes of video).**
 
+![Three tries in LIBERO's kitchen. Left: the unchanged model, told to put the frying pan on the stove, puts the moka pot there instead. Middle: the model fine-tuned with phone-derived demos, same instruction, puts the frying pan on the stove. Right: the same fine-tuned model, told "moka pot", puts the moka pot on the stove](docs/img/rollouts.gif)
+
+*Left: the public model, told to put the **frying pan** on the stove, puts the **moka pot** there:
+the task it was trained on in this kitchen. Middle and right: after fine-tuning with demos made
+from my phone videos (run Pall), the same kind of model puts on the stove whichever object it is
+told. Three of LIBERO's test layouts, real time.*
+
 ## In short
 
 - **Finding:** the public model `smolvla_libero` does LIBERO's "turn on the stove and put the
@@ -412,6 +419,7 @@ python train/convert_phone_npz.py demos/r0 demos/r1 demos/r2 --fps 10 --out data
 | `sim/write_lerobot_dataset.py` | A second LeRobot dataset writer for the demos, with a reload check |
 | `sim/run_controller_eval.py` | Success rate of the scripted controller alone on the twin task (development check) |
 | `scripts/compare_demos.py` | LIBERO's teleop demos vs the phone-derived demos: side-by-side video, gripper-path figure, table |
+| `scripts/make_rollout_gif.py` | The GIF at the top: evaluation tries side by side, from the videos `lerobot-eval` saves |
 | `scripts/analyze_results.py`, `results/` | Per-try evaluation logs of the four models, their summary, and the analysis behind README section 4 |
 | `scripts/plot_loss.py` | Training-loss curves and table of the fine-tunes, from the lerobot-train logs |
 | `train/` | Dataset building (moka subset, teleop demos, phone demos, merges), training and evaluation scripts |
