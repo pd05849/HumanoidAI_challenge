@@ -235,6 +235,17 @@ lerobot-train \
 | seed | 1000 | same random draws for every run |
 | checkpoints | every 5 000 steps + last | report `last` for every run; picking the best checkpoint on the test tasks would be tuning on the test set |
 
+Training loss: `train/train.sh` keeps the whole lerobot-train log in `outputs/train/<RUN>.log`
+(each published model carries it as `train.log`). One figure, table and CSV for all three runs:
+
+```bash
+python scripts/plot_loss.py outputs/train/T.log outputs/train/P.log outputs/train/Pall.log \
+    --names T P Pall --out docs/img/train_loss
+```
+
+The loss shows that training converged. It does not rank the runs: each run's loss is measured
+on its own training data, so only the evaluation compares them.
+
 ## 4. Evaluate (20-30 min per policy)
 
 ```bash

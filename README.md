@@ -320,6 +320,7 @@ python train/convert_phone_npz.py demos/r0 demos/r1 demos/r2 --fps 10 --out data
 | `sim/write_lerobot_dataset.py` | A second LeRobot dataset writer for the demos, with a reload check |
 | `sim/run_controller_eval.py` | Success rate of the scripted controller alone on the twin task (development check) |
 | `scripts/compare_demos.py` | LIBERO's teleop demos vs the phone-derived demos: side-by-side video, gripper-path figure, table |
+| `scripts/plot_loss.py` | Training-loss curves and table of the fine-tunes, from the lerobot-train logs |
 | `train/` | Dataset building (moka subset, teleop demos, phone demos, merges), training and evaluation scripts |
 | `scripts/eval_with_log.py`, `scripts/watch_eval.py` | LeRobot evaluation with a per-try behaviour log / a live window |
 | `scripts/check_kitchen_render.py`, `scripts/replay_demo.py` | Pictures of the two kitchen tasks; replay of a LIBERO teleop demo |
