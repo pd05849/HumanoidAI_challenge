@@ -46,6 +46,15 @@ def fisher(a, n_a, b, n_b):
     return fisher_exact([[a, n_a - a], [b, n_b - b]])[1]
 
 
+def rank_test(x, y):
+    """Two-sided Mann-Whitney U p-value (no cut-off needed), or nan without scipy."""
+    try:
+        from scipy.stats import mannwhitneyu
+    except ImportError:
+        return float("nan")
+    return mannwhitneyu(x, y).pvalue if x and y else float("nan")
+
+
 def load(root, name, tag):
     path = Path(root) / name / f"{tag}_episodes.jsonl"
     return [json.loads(line) for line in open(path)] if path.exists() else None
@@ -85,6 +94,12 @@ def main():
                   f"{never}/{len(fails)} | other object moved > {MOVED_CM:g} cm: {len(disturbed)} tries "
                   f"({sum(not r['success'] for r in disturbed)} failed) | median step: stove on {med(stove)}, "
                   f"first lift {med(lift)}")
+            nl = [r for r in fails if value(r["max_lift_cm"], target) <= LIFT_CM]
+            if nl:
+                print(f"      in the {len(nl)} failures without lifting the target: target not moved at all in "
+                      f"{sum(value(r['max_move_cm'], target) == 0 for r in nl)}, moved > {MOVED_CM:g} cm in "
+                      f"{sum(value(r['max_move_cm'], target) > MOVED_CM for r in nl)}; other object moved > "
+                      f"{MOVED_CM:g} cm in {sum(value(r['max_move_cm'], other) > MOVED_CM for r in nl)}")
 
     print(f"\n== frying-pan success by how far the moka pot starts from the pan (test layouts, "
           f"centre to centre; closer half {test[closer[0]]:.1f}-{test[closer[-1]]:.1f} cm, farther half "
@@ -95,17 +110,31 @@ def main():
             continue
         ok = lambda idx: sum(recs[k]["success"] for k in idx)
         hit = lambda idx: sum(value(recs[k]["max_move_cm"], "moka") > MOVED_CM for k in idx)
+        tight = [k for k in range(len(test)) if test[k] < 25]
+        rest = [k for k in range(len(test)) if test[k] >= 25]
+        mid = [k for k in range(len(test)) if 25 <= test[k] < median]
         print(f"{name:5s} closer {ok(closer):2d}/{len(closer)}, farther {ok(farther):2d}/{len(farther)} "
               f"(Fisher p = {fisher(ok(closer), len(closer), ok(farther), len(farther)):.2g}) | moka pot moved: "
-              f"closer {hit(closer)}, farther {hit(farther)}")
+              f"closer {hit(closer)}, farther {hit(farther)} | under 25 cm {ok(tight)}/{len(tight)}, 25 cm and more "
+              f"{ok(rest)}/{len(rest)} (p = {fisher(ok(tight), len(tight), ok(rest), len(rest)):.2g}), 25 cm to the "
+              f"median {ok(mid)}/{len(mid)} | rank test, start distance of successes vs failures (no cut-off): "
+              f"p = {rank_test([test[k] for k in range(len(test)) if recs[k]['success']], [test[k] for k in range(len(test)) if not recs[k]['success']]):.2g}")
 
     print(f"\n== start distance between the pan and the moka pot (centre to centre)")
     for src, label in [("test_layout", "test layouts"), ("teleop_demo", "LIBERO human demos (T)"),
                        ("phone_demo", "phone demos (Pall)")]:
         x = dist[src]
         print(f"{label:24s} n={len(x):3d} median {statistics.median(x):5.1f} cm | closer than 25 cm: "
-              f"{sum(v < 25 for v in x) / len(x):4.0%} | closer than the test median ({median:.1f} cm): "
-              f"{sum(v < median for v in x) / len(x):4.0%}")
+              f"{sum(v < 25 for v in x):3d} ({sum(v < 25 for v in x) / len(x):4.0%}) | closer than the test median "
+              f"({median:.1f} cm): {sum(v < median for v in x):3d} ({sum(v < median for v in x) / len(x):4.0%})")
+
+    base_pan, base_moka = load(args.root, "base", "pan"), load(args.root, "base", "moka")
+    if base_pan and base_moka:
+        a = sum(kind(r["first_object_picked_up"]) == "moka" for r in base_pan)
+        b = sum(kind(r["first_object_picked_up"]) == "moka" for r in base_moka)
+        print(f"\n== unchanged model lifts the moka pot first: told 'frying pan' {a}/{len(base_pan)}, told 'moka pot' "
+              f"{b}/{len(base_moka)} (Fisher p = {fisher(a, len(base_pan), b, len(base_moka)):.2g}); frying pan moved "
+              f"> {MOVED_CM:g} cm when told 'frying pan': {sum(value(r['max_move_cm'], 'frypan') > MOVED_CM for r in base_pan)}")
 
 
 if __name__ == "__main__":
