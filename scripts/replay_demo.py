@@ -6,7 +6,7 @@ Two replays of the same demo, each saved as a video:
                        (this is how the demos get re-recorded at 256 px for training later)
 Both print whether LIBERO's goal check says the task was completed.
 
-Usage:  MUJOCO_GL=egl python replay_demo.py --demo 0
+Usage:  MUJOCO_GL=egl python scripts/replay_demo.py --demo 0
 """
 import argparse
 import os

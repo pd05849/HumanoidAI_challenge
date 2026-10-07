@@ -2,13 +2,15 @@
 
     python train/conform_dataset.py SRC_DATASET --like outputs/datasets/moka --out outputs/datasets/phone_pan
 
-Used for the phone-derived datasets, which are written in the cloud session without access to
-the reference (the moka subset of the LeRobot LIBERO dataset): if their fps label, video codec or
-feature names differ from the reference's, `lerobot-edit-dataset --operation.type merge` refuses.
-This script decodes every episode (both cameras, state, action, task) and writes it again with
-the reference's fps label, codec and feature names. Frames are not resampled: one frame is one
-20 Hz control step in every LIBERO dataset, only the fps label differs. Re-encoding adds a small
-compression error (about 1-2/255).
+Used for the phone-derived datasets, which train/convert_phone_npz.py writes without --like (the
+two Hugging Face datasets and the folders of README step 4): they store the camera frames as
+video, while the reference (the moka subset of the LeRobot LIBERO dataset) stores them as images
+in the parquet files. If the fps label, image storage, video codec or feature names differ from
+the reference's, `lerobot-edit-dataset --operation.type merge` refuses, and
+train/build_datasets.sh calls this script. It decodes every episode (both cameras, state, action,
+task) and writes it again in the reference's format (fps label, features, codec). Frames are not
+resampled: one frame is one 20 Hz control step in every LIBERO dataset, only the fps label
+differs. Re-encoding adds a small compression error (about 1-2/255).
 """
 import argparse
 import glob

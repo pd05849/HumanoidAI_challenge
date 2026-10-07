@@ -550,7 +550,7 @@ def main():
     ap.add_argument("--keep-moka-disturbed", action="store_true",
                     help="also keep successes where the moka pot moved > 10 mm or tilted > 10 deg "
                          "(default: such episodes are not kept and the layout is replaced)")
-    ap.add_argument("--reject-moka-disturbed", action="store_true", help=argparse.SUPPRESS)  # now the default
+    ap.add_argument("--reject-moka-disturbed", action="store_true", help=argparse.SUPPRESS)  # no effect: rejecting is the default
     ap.add_argument("--max-track-cm", type=float, default=2.0,
                     help="do not keep successes whose carry tracking RMS (sim pan vs mapped real path) is "
                          "above this (cm; 0 = no limit). Good grasps track at 0.2-1.2 cm; > 2 cm means "
@@ -562,7 +562,7 @@ def main():
     ap.add_argument("--no-video", action="store_true")
     ap.add_argument("--no-figure", action="store_true")
     ap.add_argument("--dry-run", action="store_true", help="load and summarise the paths, list the jobs, exit")
-    g = ap.add_argument_group("replay (defaults = the validated prototype)")
+    g = ap.add_argument_group("replay of the real path (defaults: sim/real_path.py ReplayConfig)")
     d = RP.ReplayConfig()
     g.add_argument("--lift", default=d.lift, choices=["bump", "real", "scale"])
     g.add_argument("--kz", type=float, default=d.kz)

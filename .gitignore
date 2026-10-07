@@ -13,7 +13,7 @@ live.jpg
 *.tgz
 data/raw/
 
-# working folders of the phone pipeline and of the exploration scripts (README "Run it yourself")
+# working folders of the phone pipeline and of the exploration scripts (README "Reproduce" (c))
 /tracks/
 /demos/
 /datasets/

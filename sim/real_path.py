@@ -1,8 +1,7 @@
 """Real (phone-tracked) pan path -> scripted Franka replay in LIBERO-90 task 21
 (KITCHEN_SCENE3, "turn on the stove and put the frying pan on it").
 
-Refactored from the prototype replay_real_path.py (10/10 on init states 0-9 and
-10-19 for the IMG_0619 clip); the behaviour is unchanged:
+Used by sim/make_demos.py for every (take, layout) episode. The steps:
 
  1. Real path (scripts/track_pan.py path.json): board world frame in metres (x right
     along the counter, y toward the wall, z up; pan origin = centre of the marker on
@@ -77,7 +76,7 @@ REQUIRED_PHASES = ("rest_start_frames", "rest_end_frames", "lift_off_s", "touchd
 
 def sg_frames(fps, window_s=0.23, order=3):
     """Odd Savitzky-Golay window (frames) covering ~window_s at this frame rate
-    (7 at 29.97 fps, as in the prototype; 15 at 60 fps)."""
+    (7 at 29.97 fps, 15 at 59.94 fps)."""
     w = int(round(window_s * fps)) | 1
     return max(w, order + 2 + (order % 2 == 0))
 

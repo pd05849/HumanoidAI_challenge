@@ -212,10 +212,13 @@ motion, used to teach a model **one missing instruction word** in a same-scene t
 - Hou & Zhao, *LangGap: Diagnosing and Closing the Language Gap in Vision-Language-Action Models*,
   IROS 2026. [arXiv:2603.00592](https://arxiv.org/abs/2603.00592) · [code](https://github.com/YC11Hou/langgap)
   (same-scene instruction changes on LIBERO Spatial/Object/Goal; not the LIBERO-10 kitchen used here)
-- *LIBERO-Plus*: robustness analysis of VLAs on LIBERO, finds models largely ignore language.
-  [arXiv:2510.13626](https://arxiv.org/abs/2510.13626) · [code](https://github.com/sylvestf/LIBERO-plus)
-- *LIBERO-PRO*: perturbation benchmark showing collapse when the instruction's target changes.
-  [code](https://github.com/Zxy-MLlab/LIBERO-PRO)
+- Fei et al., *LIBERO-Plus: In-depth Robustness Analysis of Vision-Language-Action Models*,
+  2025. [arXiv:2510.13626](https://arxiv.org/abs/2510.13626) · [code](https://github.com/sylvestf/LIBERO-plus)
+  (robustness analysis of VLAs on LIBERO; finds models largely ignore language)
+- Zhou et al., *LIBERO-PRO: Towards Robust and Fair Evaluation of Vision-Language-Action Models
+  Beyond Memorization*, 2025. [arXiv:2510.03827](https://arxiv.org/abs/2510.03827) ·
+  [code](https://github.com/Zxy-MLlab/LIBERO-PRO) (perturbation benchmark showing collapse when
+  the instruction's target changes)
 
 **Turning human video into robot data (the approach above)**
 - Mandlekar et al., *MimicGen: A Data Generation System for Scalable Robot Learning using Human
@@ -231,17 +234,12 @@ motion, used to teach a model **one missing instruction word** in a same-scene t
   [arXiv:2505.07096](https://arxiv.org/abs/2505.07096) · [site](https://portal-cornell.github.io/X-Sim/)
   (object motion from human video as the transferable signal)
 - Lum et al., *Crossing the Human-Robot Embodiment Gap with Sim-to-Real RL using One Human
-  Demonstration* (Human2Sim2Robot), 2025. [arXiv:2504.12609](https://arxiv.org/abs/2504.12609)
-- Bahl et al., *Affordances from Human Videos as a Versatile Representation for Robotics* (VRB),
-  CVPR 2023. [arXiv:2304.08488](https://arxiv.org/abs/2304.08488)
-- *H2RBench: A Real-to-Sim Benchmark for Evaluating Human-to-Robot Transfer*, CoRL 2026.
-  [code](https://github.com/xiaochy/H2RBench)
-
-**Splitting "where to go" from "how to grasp"**
-- Nguyen et al., *GloVLA: Let Geometry Move and Local VLA Interact for Robust Object-Centric
-  Manipulation in Unstructured Environments*, 2026. [arXiv:2609.06256](https://arxiv.org/abs/2609.06256)
+  Demonstration*, 2025. [arXiv:2504.12609](https://arxiv.org/abs/2504.12609) (Human2Sim2Robot)
+- Bahl et al., *Affordances from Human Videos as a Versatile Representation for Robotics*,
+  CVPR 2023. [arXiv:2304.08488](https://arxiv.org/abs/2304.08488) (VRB)
 
 **Markers and camera calibration**
 - Garrido-Jurado et al., *Automatic generation and detection of highly reliable fiducial markers
-  under occlusion*, Pattern Recognition 47(6), 2014 (ArUco).
+  under occlusion*, Pattern Recognition 47(6), 2014.
+  [doi:10.1016/j.patcog.2014.01.005](https://doi.org/10.1016/j.patcog.2014.01.005) (ArUco)
 - [OpenCV ArUco / ChArUco tutorial](https://docs.opencv.org/4.x/df/d4a/tutorial_charuco_detection.html)

@@ -4,7 +4,7 @@
     python scripts/push_dataset.py datasets/phone_pan_all --repo-id <hf_user>/libero90_frying_pan_phone
     python scripts/push_dataset.py datasets/phone_pan_P   --repo-id <hf_user>/libero90_frying_pan_phone_50
 
-(datasets/... = the folders written by train/convert_phone_npz.py, README "Run it yourself" step 4.)
+(datasets/... = the folders written by train/convert_phone_npz.py, README "Reproduce" (c), step 4.)
 
 Uses LeRobot's own push_to_hub, which uploads the dataset, writes its dataset card (README.md
 on the Hub) and tags the upload with LeRobot's codebase version so that LeRobotDataset("<repo-id>")
@@ -59,7 +59,7 @@ def main():
         found = sorted(p.name for p in root.iterdir()) if root.is_dir() else None
         raise SystemExit(f"{root} is not a complete LeRobot dataset (no meta/info.json). "
                          + (f"It contains: {found}. " if found is not None else "The folder does not exist. ")
-                         + "Write it first with train/convert_phone_npz.py (README 'Run it yourself', step 4).")
+                         + "Write it first with train/convert_phone_npz.py (README 'Reproduce' (c), step 4).")
     info = json.load(open(root / "meta" / "info.json"))
     report = root.parent / f"{root.name}_report.json"
     n_takes = len(json.load(open(report)).get("per_take", {})) if report.exists() else "17"

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """Check one make_demos.py episode against LeRobot's own LIBERO eval path, and replay it open-loop.
 
-usage (LeRobot venv with LIBERO, e.g. the 3.12 replica or the training machine):
+usage (repo root, the LeRobot environment of the README's "Reproduce", which includes LIBERO;
+MUJOCO_GL=egl on an NVIDIA GPU, osmesa on the CPU):
   python sim/check_demo_conventions.py OUT/episodes/<take>_seed<S>.npz [--replay kept|full|both|none]
                                        [--png check.png]
 

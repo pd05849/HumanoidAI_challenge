@@ -1,10 +1,15 @@
-"""Printable marker sheets (US Letter, print at 100% / "actual size").
+"""Printable marker sheets (US Letter, print at 100% / "actual size"). Where they go: docs/filming.md.
+
+    python scripts/make_markers.py
+
+Writes markers_letter.pdf and the previews markers_page1.png, markers_page2.png to the current
+folder. The copy in the repo is assets/markers_letter.pdf.
 
 Page 1: ChArUco board (5x7 squares, 30 mm squares, 22 mm markers, DICT_4X4_50 ids 0-16).
-        Tape it flat on the counter next to the stove: it defines the table frame, and the same
-        board is used once to calibrate the phone camera.
+        Tape it flat on the front-left burner, top of the page toward the wall: it defines the
+        table frame. A held copy of the same board is filmed once to calibrate the phone camera.
 Page 2: pan markers (DICT_4X4_50): id 40 at 80 mm for the inside of the pan, id 41 at 40 mm
-        as a spare / handle option.
+        as a spare.
 Each page has a 50 mm scale bar to check the printer did not rescale.
 """
 import cv2
@@ -51,9 +56,10 @@ with PdfPages("markers_letter.pdf") as pdf:
     bw, bh = nx * sq, ny * sq
     img = board.generateImage((int(bw * PX_PER_MM), int(bh * PX_PER_MM)), marginSize=0, borderBits=1)
     fig = plt.figure(figsize=(PAGE_W / 25.4, PAGE_H / 25.4))
-    text(fig, 15, 12, "Page 1 - counter board (ChArUco 5x7, 30 mm squares, 22 mm markers, DICT_4X4_50)", 10, True)
-    text(fig, 15, 19, "Tape flat on the counter next to the stove, fully visible in every clip. Do not move it during a session.")
-    text(fig, 15, 24, "Also film it once from many angles (10-20 s, slow) to calibrate the phone camera.")
+    text(fig, 15, 12, "Page 1 - reference board (ChArUco 5x7, 30 mm squares, 22 mm markers, DICT_4X4_50)", 10, True)
+    text(fig, 15, 19, "Tape flat on the front-left burner, top of the page toward the wall, tape at the page corners only.")
+    text(fig, 15, 24, "Fully visible in every clip. Do not move it during a session.")
+    text(fig, 15, 29, "Calibration (once): hold a copy where the pan will be and film 20-30 s, slowly tilting it into all four corners.")
     place(fig, img, (PAGE_W - bw) / 2, 34, bw, bh)
     scale_bar(fig, 20, 34 + bh + 12)
     pdf.savefig(fig)
@@ -63,8 +69,9 @@ with PdfPages("markers_letter.pdf") as pdf:
     # page 2: pan markers
     fig = plt.figure(figsize=(PAGE_W / 25.4, PAGE_H / 25.4))
     text(fig, 15, 12, "Page 2 - pan markers (DICT_4X4_50)", 10, True)
-    text(fig, 15, 19, "id 40 (80 mm): tape flat on the inside bottom of the COLD pan, so the camera sees it all the way.")
-    text(fig, 15, 24, "id 41 (40 mm): spare, or on top of the handle near the pan if id 40 gets hidden. Keep the white border.")
+    text(fig, 15, 19, "id 40 (80 mm): flat on the inside bottom of the COLD pan, centred. Cut along the grey line, keep the white border.")
+    text(fig, 15, 24, "Double-sided tape under it, or tape on the white border only: tape over the black squares makes glare.")
+    text(fig, 15, 29, "id 41 (40 mm): spare only. Nothing goes on the stove knobs or the pan's handle.")
     for mid, size, x, y in [(40, 80.0, 25, 40), (41, 40.0, 130, 60)]:
         border = 8.0  # white quiet zone around the marker, then a thin cut line
         m = cv2.aruco.generateImageMarker(DICT, mid, int(size * PX_PER_MM))

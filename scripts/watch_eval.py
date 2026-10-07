@@ -1,11 +1,13 @@
 """Run `lerobot-eval` unchanged, but also show the robot's front camera live in a window.
 
-Usage: replace `lerobot-eval` with `python watch_eval.py` and keep every flag, e.g.
-    MUJOCO_GL=egl python watch_eval.py --policy.path=HuggingFaceVLA/smolvla_libero \
+Usage (repo root): replace `lerobot-eval` with `python scripts/watch_eval.py` and keep every
+flag, e.g.
+    MUJOCO_GL=egl python scripts/watch_eval.py --policy.path=HuggingFaceVLA/smolvla_libero \
+        --policy.n_action_steps=10 --policy.num_steps=10 \
         --env.type=libero --env.task=libero_90 --env.task_ids='[21]' \
-        --env.observation_height=256 --env.observation_width=256 \
-        --eval.n_episodes=20 --eval.batch_size=1 --output_dir=./eval_logs/pilot_pan
-Needs --eval.batch_size=1 (the simulator then runs inside this process).
+        --eval.n_episodes=10 --eval.batch_size=1 --output_dir=./eval_logs/watch_pan
+Needs --eval.batch_size=1 (the simulator then runs inside this process). Without a display it
+writes the latest frame to live.jpg in the current folder instead of opening a window.
 """
 import os
 import sys

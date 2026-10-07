@@ -1,29 +1,43 @@
 #!/usr/bin/env bash
-# Build the training datasets for run P (phone demos + moka) and run T (teleop demos + moka).
+# Build the training datasets of the three fine-tunes T, P and Pall (see docs/training.md).
 #
-#   (a) moka subset   : LIBERO-10 task 2 episodes out of HuggingFaceVLA/libero      -> $DATA/moka
+#   (a) moka subset   : the 41 LIBERO-10 task 2 episodes in HuggingFaceVLA/libero    -> $DATA/moka
 #   (b) teleop pan    : the 50 LIBERO-90 task 21 human demos, re-rendered at 256 px  -> $DATA/teleop_pan
-#   (c) phone pan     : sim/make_demos.py episodes (from the phone-tracked paths)    -> $DATA/phone_pan
-#   (c2) phone pan all: optional, every phone-derived demo (PHONE_ALL_DATASET)      -> $DATA/phone_pan_all
-#   (d) merge         : P = moka + phone_pan, T = moka + teleop_pan                  -> $DATA/P, $DATA/T
-#                       Pall = moka + phone_pan_all (if PHONE_ALL_DATASET is set)    -> $DATA/Pall
-#       then the normalization stats of P and T are pinned to smolvla_libero's own (PIN_STATS=1).
+#   (c) phone pan     : 50 phone-derived demos (PHONE_DATASET, or PHONE_DEMOS below) -> $DATA/phone_pan
+#   (c2) phone pan all: all 153 phone-derived demos (PHONE_ALL_DATASET)              -> $DATA/phone_pan_all
+#   (d) merge         : T = moka + teleop_pan, P = moka + phone_pan                  -> $DATA/T, $DATA/P
+#                       Pall = moka + phone_pan_all                                  -> $DATA/Pall
+#       then the state/action normalization stats of every merged dataset are pinned to
+#       smolvla_libero's own (PIN_STATS=1).
 #
-# Usage (repo root, LeRobot env with lerobot[libero,smolvla], GPU machine):
-#   PHONE_DEMOS=/path/to/make_demos_out bash train/build_datasets.sh      # npz episodes (sim/make_demos.py)
-#   PHONE_DATASET=/path/to/phone_pan bash train/build_datasets.sh         # or a LeRobot dataset (folder or
-#                                       Hugging Face dataset id, e.g. <hf_user>/libero90_frying_pan_phone_50) built
-#                                       elsewhere with train/convert_phone_npz.py; if its fps label or
-#                                       codec differs from moka's, it is re-written (conform_dataset.py)
-# Without either, only moka, teleop_pan and T are built (run it again later for P).
+# Usage, as run for the results (repo root, LeRobot 0.6.1 env with lerobot[libero,smolvla,training];
+# MUJOCO_GL=osmesa where NVIDIA's EGL vendor file is missing, egl otherwise; no GPU needed):
+#   PHONE_DATASET=Delcastillo8/libero90_frying_pan_phone_50 \
+#   PHONE_ALL_DATASET=Delcastillo8/libero90_frying_pan_phone bash train/build_datasets.sh
+# Give both: they have no defaults. Without PHONE_DATASET there is no P, without PHONE_ALL_DATASET
+# no Pall. Each is a LeRobot dataset folder (e.g. datasets/phone_pan_P and datasets/phone_pan_all
+# from README step 4) or a Hugging Face dataset id. If its features, fps label or codec differ
+# from moka's (the Hub datasets store video, moka stores images in parquet), it is re-written in
+# moka's format (conform_dataset.py).
+# Expected: moka 41 episodes / 10,866 frames; teleop 50 of 50 kept; T 91 episodes / 24,801 frames;
+# P 91; Pall 194; "ALL COMPATIBLE" at the end of $DATA/logs/check_sources.log.
+#
+# Alternative for P: PHONE_DEMOS="demos/r0 demos/r1 demos/r2" (sim/make_demos.py --out folders with
+# episodes/*.npz) converts the npz episodes here with convert_phone_npz.py, capped at the number of
+# teleop episodes and taken round-robin over the takes (MATCH_COUNTS=1). It wins over PHONE_DATASET
+# if both are set. It does not make Pall: that still needs PHONE_ALL_DATASET.
+# Without PHONE_DEMOS and PHONE_DATASET there is no phone_pan and no P; Pall needs only PHONE_ALL_DATASET.
 # Steps whose output folder already exists are skipped; REBUILD=1 rebuilds everything.
 #
 # Environment knobs:
 #   DATA=outputs/datasets  SOURCE_REPO=HuggingFaceVLA/libero  POLICY=HuggingFaceVLA/smolvla_libero
-#   PIN_STATS=1  MATCH_COUNTS=1 (cap the phone episodes at the number of teleop episodes)
-#   TELEOP_JOBS=4 (parallel processes replaying the 50 teleop demos; ~2 GB RAM each)
+#   PIN_STATS=1  MATCH_COUNTS=1 (PHONE_DEMOS only: cap the phone episodes at the teleop count)
+#   TELEOP_JOBS=4 (parallel processes replaying the 50 teleop demos; ~2 GB RAM each; one log per
+#     part in $DATA/logs/teleop_pan.part*.log, one merged $DATA/teleop_pan_report.json;
+#     TELEOP_JOBS=1 runs one process that logs to $DATA/logs/teleop_pan.log)
 #   TELEOP_HDF5=/path/to/the/downloaded.hdf5 (skip its download)  TELEOP_DEMOS=0-9 (a subset, for tests)
-#   TELEOP_ARGS="..." PHONE_ARGS="..." (extra flags for the converters)  PY=python
+#   TELEOP_ARGS="..." PHONE_ARGS="..." (extra flags for the converters; PHONE_ARGS: PHONE_DEMOS only)
+#   PY=python  MUJOCO_GL=egl (default; osmesa renders on the CPU)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

@@ -9,15 +9,18 @@ downloaded. The subset is written with LeRobot's own split_dataset (the same cod
 `lerobot-edit-dataset --operation.type split`), so features, fps, encoder settings and per-episode
 stats are copied unchanged.
 
-usage (LeRobot env with Hub access):
+usage (LeRobot env with Hub access; train/build_datasets.sh runs the first form, with --overwrite):
   python train/make_moka_subset.py --out outputs/datasets/moka
+  python train/make_moka_subset.py --dry-run                    # fps, features, selected episodes; no download
   python train/make_moka_subset.py --list-tasks                 # show the task strings and counts
   python train/make_moka_subset.py --repo-id lerobot/libero --out outputs/datasets/moka
 
 Writes OUT/ (a LeRobot dataset), OUT_subset.json next to it (selected source episode indices,
 lengths) and OUT_preview.png (first frame of both cameras, to check the image orientation).
 NB the OpenVLA-regenerated LIBERO data (which HuggingFaceVLA/libero is built from) dropped demos
-that failed on replay, so expect fewer than 50 moka episodes (the script prints the count).
+that failed on replay: HuggingFaceVLA/libero has 41 moka episodes (10,866 frames), not 50. These
+41 are the moka-pot demos of all three runs T, P and Pall. Its meta/episodes also points most
+episodes at the wrong data file; repair_file_pointers() fixes the local copy before the download.
 """
 import argparse
 import json

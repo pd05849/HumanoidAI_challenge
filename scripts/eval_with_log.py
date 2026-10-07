@@ -4,8 +4,14 @@ For each episode it records: success, whether the stove got turned on, which obj
 first (>3 cm), and how far every object moved. Results go to <output_dir>_episodes.jsonl and a
 summary is printed at the end.
 
-Usage: replace `lerobot-eval` with `python eval_with_log.py` and keep every flag
-(needs --eval.batch_size=1 so the simulator runs inside this process).
+Usage (repo root): replace `lerobot-eval` with `python scripts/eval_with_log.py` and keep every
+flag, e.g.
+    MUJOCO_GL=egl python scripts/eval_with_log.py --policy.path=HuggingFaceVLA/smolvla_libero \
+        --policy.n_action_steps=10 --policy.num_steps=10 \
+        --env.type=libero --env.task=libero_90 --env.task_ids='[21]' \
+        --eval.n_episodes=10 --eval.batch_size=1 --output_dir=./eval_logs/pan_10ep
+Needs --eval.batch_size=1 (the simulator then runs inside this process). Write --output_dir with
+"=": without it the log goes to ./eval_logs/run_episodes.jsonl. train/eval.sh calls this script.
 """
 import atexit
 import json

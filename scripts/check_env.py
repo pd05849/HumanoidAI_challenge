@@ -35,7 +35,8 @@ def imports(mod):
 def gpu():
     import torch
     if not torch.cuda.is_available():
-        raise RuntimeError("torch sees no CUDA GPU (fine on a laptop; training and evaluation need one)")
+        raise RuntimeError("torch sees no CUDA GPU (fine for tracking and demo generation; "
+                           "training and evaluation need one)")
     p = torch.cuda.get_device_properties(0)
     return f"{p.name}, {p.total_memory / 1e9:.0f} GB, torch {torch.__version__}"
 
@@ -68,7 +69,12 @@ print("GPU")
 check("CUDA", gpu)
 
 if not ok:
-    print('\nFix missing packages with:  pip install "lerobot[libero,smolvla,training]"'
+    print('\nFix missing packages with:  uv pip install "lerobot[libero,smolvla,training]==0.6.1"'
+          "  (needs Python >= 3.12)"
+          "\nNo Python 3.12 here? uv makes one without touching the system Python:"
+          "\n  curl -LsSf https://astral.sh/uv/install.sh | sh && source $HOME/.local/bin/env"
+          "\n  uv venv --python 3.12 .venv && source .venv/bin/activate"
+          '\n  uv pip install "lerobot[libero,smolvla,training]==0.6.1"'
           "\nIf only rendering fails: on an NVIDIA machine set MUJOCO_GL=egl; without one, "
           "sudo apt install libosmesa6 and set MUJOCO_GL=osmesa.")
 sys.exit(0 if ok else 1)

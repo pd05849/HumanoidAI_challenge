@@ -1,8 +1,8 @@
 """Render the first frame of every LIBERO task (front camera), as the policy sees it.
 
 Usage:
-    MUJOCO_GL=egl python render_scenes.py --out renders               # all 130 tasks
-    MUJOCO_GL=egl python render_scenes.py --suites libero_object      # one suite
+    MUJOCO_GL=egl python scripts/render_scenes.py --out renders               # all 130 tasks
+    MUJOCO_GL=egl python scripts/render_scenes.py --suites libero_object      # one suite
 Use MUJOCO_GL=osmesa on a machine without a GPU (slower).
 """
 import argparse

@@ -136,7 +136,8 @@ def main():
             skipped["no json"].append(p.name)
             continue
         if m.get("generator_version") is None:
-            # made before the eval-identical env fix in sim/make_demos.py: actions do not replay in LiberoEnv
+            # no generator_version: written by an earlier sim/make_demos.py whose env was not built
+            # like LiberoEnv, so its actions do not replay in LiberoEnv
             skipped["old generator (no generator_version)"].append(p.name)
             continue
         if not (m.get("kept") and m.get("success")):
@@ -198,7 +199,7 @@ def main():
                    last_step=int(steps[-1]) if n else None,
                    eval_distance_cm=(m.get("eval_distance") or {}).get("min_joint_cm"),
                    generator_version=m.get("generator_version"), state_source=state_src,
-                   state_vs_stored_max_abs=dev, source=str(p))
+                   state_vs_stored_max_abs=dev, source=p.name)
         report.append(rec)
         warn = ""
         if fss is not None and fss >= EVAL_MAX_STEPS:
@@ -210,7 +211,8 @@ def main():
                    length_min=min(lens), length_median=float(np.median(lens)), length_max=max(lens),
                    per_take=dict(per_take), generator_versions=versions,
                    keep_after_success=args.keep_after_success, fps=schema.fps,
-                   like=args.like, harmonized_info_keys=changed, inputs=args.inputs, wall_s=time.time() - t0,
+                   like=args.like, harmonized_info_keys=changed, inputs=[Path(x).name for x in args.inputs],
+                   wall_s=time.time() - t0,
                    episodes=report)
     rep = out.parent / f"{out.name}_report.json"
     with open(rep, "w") as f:
