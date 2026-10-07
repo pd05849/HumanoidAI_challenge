@@ -2,8 +2,8 @@
 """Convert tracked real pan paths (scripts/track_pan.py -> path.json) into LIBERO robot demos
 for LIBERO-90 task 21 "turn on the stove and put the frying pan on it" (KITCHEN_SCENE3).
 
-usage (LIBERO venv, Python 3.11):
-  MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa python sim/make_demos.py \
+usage (the project's venv; MUJOCO_GL=osmesa renders on the CPU, egl on an NVIDIA GPU):
+  MUJOCO_GL=osmesa python sim/make_demos.py \
       TRACKS_DIR_OR_PATH_JSON [...] --layouts 3 --seed 0 --out OUT [--workers 2] \
       [--states-from sampled|eval] [--skip-existing]
 
@@ -76,7 +76,8 @@ import time
 import zlib
 
 os.environ.setdefault("MUJOCO_GL", "osmesa")
-os.environ.setdefault("PYOPENGL_PLATFORM", "osmesa")
+if os.environ["MUJOCO_GL"] in ("egl", "osmesa"):  # robosuite refuses EGL unless both name the same backend
+    os.environ.setdefault("PYOPENGL_PLATFORM", os.environ["MUJOCO_GL"])
 
 import numpy as np
 

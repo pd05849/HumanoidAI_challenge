@@ -1,14 +1,24 @@
-# evaluation / training outputs
+# evaluation / training outputs (the per-try results that back the README live in results/)
 eval_logs/
 outputs/
 *_episodes.jsonl
+!results/**/*_episodes.jsonl
 live.jpg
 
-# large media and data (host on the Hugging Face Hub instead)
+# large media and data (host on the Hugging Face Hub instead); never commit raw clips
 *.mp4
-*.mov
+*.[mM][oO][vV]
 *.hdf5
+*.npz
+*.tgz
 data/raw/
+
+# working folders of the phone pipeline and of the exploration scripts (README "Run it yourself")
+/tracks/
+/demos/
+/datasets/
+/renders/
+/check_markers_out/
 
 # python
 __pycache__/

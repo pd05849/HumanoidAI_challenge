@@ -1,5 +1,7 @@
 import os, sys, json
-os.environ.setdefault("MUJOCO_GL", "osmesa"); os.environ.setdefault("PYOPENGL_PLATFORM", "osmesa")
+os.environ.setdefault("MUJOCO_GL", "osmesa")
+if os.environ["MUJOCO_GL"] in ("egl", "osmesa"):  # robosuite refuses EGL unless both name the same backend
+    os.environ.setdefault("PYOPENGL_PLATFORM", os.environ["MUJOCO_GL"])
 from multiprocessing import Pool
 SUITES = ["libero_spatial", "libero_object", "libero_goal", "libero_10", "libero_90"]
 OUT = "renders"

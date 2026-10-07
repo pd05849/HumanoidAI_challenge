@@ -35,8 +35,8 @@ PHONE_ALL_DATASET=Delcastillo8/libero90_frying_pan_phone \
   bash train/build_datasets.sh
 ```
 
-(The same datasets are in the private clips repo under `datasets/phone_pan_P` and
-`datasets/phone_pan_all`; local folders work too: `PHONE_DATASET=../Humanoid_clips/datasets/phone_pan_P ...`.)
+(Local folders work too, e.g. the datasets written by step 4 of the README's phone pipeline:
+`PHONE_DATASET=datasets/phone_pan_P PHONE_ALL_DATASET=datasets/phone_pan_all ...`.)
 
 They were written with `fps = 10`, the same label as `HuggingFaceVLA/libero` (checked). That
 dataset stores its camera frames as images inside the parquet files rather than as videos, so the

@@ -1,8 +1,9 @@
 """Side-by-side comparison of two LIBERO-format LeRobot datasets of the same task: LIBERO's
 human-teleoperated demos (run T) and the phone-derived demos (run P).
 
+    hf download Delcastillo8/libero90_frying_pan_phone_50 --repo-type dataset --local-dir datasets/phone_pan_P
     python scripts/compare_demos.py --teleop outputs/datasets/teleop_pan \
-        --phone ../Humanoid_clips/datasets/phone_pan_P --out docs/img/teleop_vs_phone
+        --phone datasets/phone_pan_P --out docs/img/teleop_vs_phone
 
 Writes
   <out>.gif / <out>.mp4   one demo of each, side by side, front and wrist cameras exactly as the model

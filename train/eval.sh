@@ -4,13 +4,15 @@
 #   moka: libero_10 task 2   "turn on the stove and put the moka pot on it"    (520-step limit)
 #
 # Usage (repo root, LeRobot env, GPU):
-#   bash train/eval.sh HuggingFaceVLA/smolvla_libero base
+#   bash train/eval.sh HuggingFaceVLA/smolvla_libero base                 # the unchanged model
+#   bash train/eval.sh Delcastillo8/smolvla_libero_frying_pan_T T         # a fine-tune, from the Hub
+#   bash train/eval.sh outputs/models/T T                                 # ... or from a local folder
 #   bash train/eval.sh POLICY NAME --rename_map='{"a": "b"}'     # extra flags go to lerobot-eval
-#   bash train/eval.sh outputs/train/P/checkpoints/last/pretrained_model P
-#   bash train/eval.sh outputs/train/T/checkpoints/last/pretrained_model T
 #   python train/summarize_evals.py eval_logs            # table of all of them
 # Writes eval_logs/NAME/{pan,moka}/ (eval_info.json, videos/ of the first 10 episodes),
-# eval_logs/NAME/{pan,moka}_episodes.jsonl (what the robot did) and eval_logs/NAME/{pan,moka}.log.
+# eval_logs/NAME/{pan,moka}_episodes.jsonl (what the robot did), eval_logs/NAME/{pan,moka}.log and,
+# once the run has finished, eval_logs/NAME/{pan,moka}.meta.json. A task with a meta file is
+# skipped on the next call; a task without one (interrupted run) is redone from scratch.
 #
 # Knobs: N_EPISODES=50 (= all 50 init states of each task)  ONLY=pan|moka  FORCE=1 (redo existing)
 #   EVAL_RES= (empty: LeRobot's default render size, as in the README results; 256 = the training
@@ -34,8 +36,9 @@ for spec in "pan libero_90 21" "moka libero_10 2"; do
   read -r tag suite tid <<< "$spec"
   if [[ -n "${ONLY:-}" && "$ONLY" != "$tag" ]]; then continue; fi
   out="$ROOT/$NAME/$tag"
-  if [[ -e "$out" && -z "${FORCE:-}" ]]; then echo "skip $out (exists; FORCE=1 to redo)"; continue; fi
-  rm -rf "$out" "${out}_episodes.jsonl"     # eval_with_log.py appends to the jsonl
+  if [[ -e "$out.meta.json" && -z "${FORCE:-}" ]]; then echo "skip $out (finished; FORCE=1 to redo)"; continue; fi
+  [[ -e "$out" ]] && echo "redo $out (no $out.meta.json: the earlier run did not finish)"
+  rm -rf "$out" "${out}_episodes.jsonl" "$out.meta.json"    # eval_with_log.py appends to the jsonl
   echo "== $NAME / $tag: $suite task $tid, $N episodes"
   python scripts/eval_with_log.py \
     --policy.path="$POLICY" \

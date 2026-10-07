@@ -274,21 +274,25 @@ Use `--env.task=libero_10 --env.task_ids='[2]'` for the original moka-pot instru
 whole 50-step action chunk before looking again) the model scored 0 even on the task it was
 trained on. Saved videos play 4x faster than real time (`mpv --speed=0.25`).
 
-**From phone clips to robot demos.** The clips are not in this repository (`*.mov` is
-git-ignored; they are kept in a separate private repository, with their location metadata
-stripped). With your own clips:
+**From phone clips to robot demos.** The raw clips are not published (video files are
+git-ignored; the clips stay in a separate private repository). What the robot demos are made from
+is published: the tracked pan path of each of the 18 takes, in [`data/tracks/`](data/tracks/)
+(numbers only; [summary](data/tracks/summary.md)). Step 3 regenerates the phone demos from them;
+steps 1-2 are for your own clips.
 
 ```bash
 # 1. camera calibration (clips of the printed board moved in front of the fixed phone)
-python scripts/calibrate_camera.py calib_*.mov --out data/calibration/ipad_1080p.json
+python scripts/calibrate_camera.py calib_*.mov --out data/calibration/my_camera.json
 # 2. track the pan in each take, draw the tracking on the video, summarise all takes
-python scripts/track_pan.py Demo1.mov --calib data/calibration/ipad_1080p.json --out tracks/Demo1
+python scripts/track_pan.py Demo1.mov --calib data/calibration/my_camera.json --out tracks/Demo1
 python scripts/render_tracking.py Demo1.mov tracks/Demo1/path.json --out tracks/Demo1/tracking.mp4
 python scripts/summarize_tracks.py tracks --out tracks/summary
 # 3. robot demos: every tracked take x new arrangements, physics-checked
-#    (3 rounds x 3 kept arrangements per take; seeds 0/100/200 give different arrangements)
+#    (3 rounds x 3 kept arrangements per take; seeds 0/100/200 give different arrangements).
+#    data/tracks = the 18 published takes; use tracks for your own. osmesa renders on the CPU
+#    (what was run); MUJOCO_GL=egl is faster on an NVIDIA GPU.
 for r in 0 1 2; do
-  MUJOCO_GL=egl python sim/make_demos.py tracks --layouts 3 --seed $((100*r)) --speedup 1.5 \
+  MUJOCO_GL=osmesa python sim/make_demos.py data/tracks --layouts 3 --seed $((100*r)) --speedup 1.5 \
     --max-steps 400 --workers 3 --out demos/r$r
 done
 python sim/summarize_demos.py demos/r0 demos/r1 demos/r2
@@ -312,6 +316,7 @@ python train/convert_phone_npz.py demos/r0 demos/r1 demos/r2 --fps 10 --out data
 | `scripts/check_markers.py` | Checks a test clip: are the board and the pan marker found? |
 | `scripts/calibrate_camera.py`, `data/calibration/ipad_1080p.json` | Camera calibration, and the result for the iPad used |
 | `scripts/track_pan.py` | Tracks the pan: its 3-D path relative to the board, phases, quality numbers |
+| `data/tracks/` | The tracked pan path of each of the 18 takes (`path.json`) and their summary: the input of the demo generator |
 | `scripts/render_tracking.py`, `scripts/summarize_tracks.py` | Tracking drawn on the video; one figure and table for all takes |
 | `sim/kitchen_controller.py` | The robot's scripted pieces in LIBERO: knob turn, handle grasp, carry, place |
 | `sim/real_path.py` | Fits a tracked path onto LIBERO's kitchen and has the robot follow it |
@@ -340,6 +345,11 @@ python train/convert_phone_npz.py demos/r0 demos/r1 demos/r2 --fps 10 --out data
 - **Fine-tuning:** continuing to train an already-trained model on a small amount of new data.
 - **Object-centric:** describing a demonstration by what happened to the object, not by the hand.
 - **Layout / arrangement:** where the pan, the moka pot and the stove stand at the start of a try.
+
+## License
+
+[MIT](LICENSE) for the code in this repository. The phone-derived datasets on Hugging Face carry
+their own license (Apache-2.0); LIBERO, LeRobot and SmolVLA keep theirs.
 
 ## Related work
 

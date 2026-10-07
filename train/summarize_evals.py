@@ -88,6 +88,10 @@ def main():
                      f"{100 * r['ci'][0]:.0f}-{100 * r['ci'][1]:.0f}% | {r['stove']}/{r['n']} | {fo} |")
         if r["pc_success_eval_info"] is not None and r["n"] and abs(r["pc_success_eval_info"] - 100 * r["rate"]) > 0.5:
             lines.append(f"| | WARNING: eval_info.json says {r['pc_success_eval_info']:.1f}% | | | | |")
+        if r["meta"] is None:
+            lines.append(f"| | WARNING: no {r['tag']}.meta.json: this run did not finish (redo it with train/eval.sh) | | | | |")
+        elif r["n"] != r["meta"].get("n_episodes"):
+            lines.append(f"| | WARNING: {r['n']} episodes logged, {r['meta'].get('n_episodes')} requested | | | | |")
     if len({r["meta"].get("eval_res") for r in rows if r["meta"]}) > 1:
         lines.append("\nWARNING: the policies were evaluated with different EVAL_RES settings.")
     try:
