@@ -87,10 +87,11 @@ def episode_stats(ep):
     da = np.abs(np.diff(a[:, :3], axis=0)).mean(axis=1) if len(a) > 1 else np.zeros(1)
     seg = carry_segment(ep)
     if seg is None:                                    # never grasped: no carry, not "the whole demo"
-        carry = {"carry_s": np.nan, "carry_cm": np.nan, "carry_lift_cm": np.nan}
+        carry = {"grasp_s": np.nan, "carry_s": np.nan, "carry_cm": np.nan, "carry_lift_cm": np.nan}
     else:
         c0, c1 = seg
-        carry = {"carry_s": (c1 - c0) / CONTROL_HZ,
+        carry = {"grasp_s": c0 / CONTROL_HZ,
+                 "carry_s": (c1 - c0) / CONTROL_HZ,
                  "carry_cm": 100 * np.linalg.norm(p[c1 - 1, :2] - p[c0, :2]),
                  "carry_lift_cm": 100 * (p[c0:c1, 2].max() - p[c0, 2])}
     return {
@@ -376,6 +377,7 @@ def make_figure(data, out_png, labels, notes, highlight, landmark_source="phone"
 def stats_table(data, labels):
     rows = [("demo length (s)", "duration_s", "{:.1f}"),
             ("gripper travel, whole demo (m)", "path_m", "{:.2f}"),
+            ("pan grasped at (s from the start)", "grasp_s", "{:.1f}"),
             ("pan in hand (s)", "carry_s", "{:.1f}"),
             ("pan moved, grasp to release, straight line (cm)", "carry_cm", "{:.0f}"),
             ("pan lifted: highest point above the grasp (cm)", "carry_lift_cm", "{:.0f}"),

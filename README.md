@@ -215,6 +215,7 @@ Over all 50 demos of each ([gripper paths of every demo](docs/img/teleop_vs_phon
 | median | LIBERO teleop (run T) | phone-derived (run P) |
 |---|---|---|
 | demo length | 13.7 s | 13.8 s |
+| pan grasped at | 9.2 s | 6.8 s |
 | time with the pan in hand | 3.8 s | 6.8 s |
 | pan moved, grasp to release | 44 cm | 40 cm |
 | pan lifted above the grasp | 21 cm | 24 cm |
@@ -222,14 +223,15 @@ Over all 50 demos of each ([gripper paths of every demo](docs/img/teleop_vs_phon
 | gripper closed | 45 % of steps | 84 % of steps |
 
 Same length, height and distance, but a different rhythm: the people take longer to turn the knob
-and reach the handle (grasp at 9.2 s vs 6.9 s) and then carry the pan faster; the scripted robot
+and reach the handle (grasp at 9.2 s vs 6.8 s) and then carry the pan faster; the scripted robot
 reaches at full speed, pushes the knob with closed fingers (hence 84 %) and carries the pan at the
 pace of my video (sped up 1.5x).
 
 ## 4. Results
 
-Every model was tested on both instructions in the same 50 LIBERO test layouts, one try per
-layout. Per-try logs: [`results/`](results/); the summary with every pairwise test:
+Every model was tested on both instructions, each in that task's 50 LIBERO test layouts (LIBERO-90
+task 21 for the frying pan, LIBERO-10 task 2 for the moka pot; the two sets differ by a few cm),
+one try per layout. Per-try logs: [`results/`](results/); the summary with every pairwise test:
 [`results/summary.md`](results/summary.md); every other number in this section:
 `python scripts/analyze_results.py`.
 
@@ -283,19 +285,19 @@ data, not the model: keep (or recover) those tight arrangements.
 
 **5. The models learned the rhythm of their demos.** The phone-trained models turn the knob and
 lift the pan earlier than T (median first lift at step 160 and 162, i.e. 8.0 and 8.1 s,
-against 194, 9.7 s), as the phone demos grasp earlier than the human ones (6.9 s vs 9.2 s, section 3).
+against 194, 9.7 s), as the phone demos grasp earlier than the human ones (6.8 s vs 9.2 s, section 3).
 
 **Training loss.** All three runs converged (20 000 steps, batch 32, about 4 h each on an H100,
 P and Pall sharing one; data loading, not the GPU, set the pace).
 
-![Training loss of T, P and Pall on a log scale: all three fall steeply in the first 1 000 steps, then slowly, and flatten over the last 5 000 steps at 0.058 (P), 0.075 (T) and 0.080 (Pall)](docs/img/train_loss.png)
+![Training loss of T, P and Pall on a log scale: P and Pall fall steeply in the first 1 000 steps while T starts lower, at 0.55, and falls gently; then all three fall slowly and flatten over the last 5 000 steps at 0.058 (P), 0.075 (T) and 0.080 (Pall)](docs/img/train_loss.png)
 
 *P ends with the lowest loss (0.058; T 0.075, Pall 0.080) yet the lowest success of the three,
 most likely because its scripted demos are more consistent and so easier to fit. The loss is measured on each run's own
 data, so it shows convergence, not which model is better. Table: [train_loss.md](docs/img/train_loss.md).*
 
 **How to read these numbers**
-- 50 tries per cell: the 95 % interval is about ±14 points around 50 %, so only differences with
+- 50 tries per cell: the 95 % interval is about ±13 points around 50 %, so only differences with
   p < 0.05 (two-sided Fisher exact test) are called differences above.
 - Pall differs from P in more than the number of demos: more start layouts, about half as many
   passes over its data, and a smaller moka-pot share. "More phone demos helped" is the result;

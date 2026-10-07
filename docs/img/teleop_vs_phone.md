@@ -6,6 +6,7 @@ Median over each dataset's demos, (min–max) in brackets. Times count 20 Hz con
 |---|---|---|
 | demo length (s) | 13.7 (11.9–16.8) | 13.8 (12.8–15.7) |
 | gripper travel, whole demo (m) | 1.85 (1.63–2.01) | 1.79 (1.66–1.97) |
+| pan grasped at (s from the start) | 9.2 (7.9–12.4) | 6.8 (6.6–7.2) |
 | pan in hand (s) | 3.8 (3.3–5.5) | 6.8 (6.0–8.7) |
 | pan moved, grasp to release, straight line (cm) | 44 (39–49) | 40 (37–43) |
 | pan lifted: highest point above the grasp (cm) | 21 (16–30) | 24 (20–29) |
