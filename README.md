@@ -448,7 +448,7 @@ What was used:
 |---|---|---|---|---|---|
 | Tracking, demo generation | CPU only | Linux | 3.11 (venv) | hf-libero 0.1.4, robosuite 1.4.0, MuJoCo 3.8.1, OpenCV 5.0 | `osmesa` |
 | Datasets, training | Lambda Cloud, 2x H100 SXM5 80 GB | Ubuntu 22.04 | 3.12 (uv; the system's 3.10 is too old) | LeRobot 0.6.1 | `osmesa` (the NVIDIA EGL vendor file was missing) |
-| Evaluation | my laptop, RTX 3050 4 GB | Ubuntu | >= 3.12 | LeRobot 0.6.2, built from source | `egl` |
+| Evaluation | my laptop, RTX 3050 4 GB | Ubuntu 24.04 | 3.12.3 | LeRobot 0.6.2, built from source (commit `4aaff99b`, 28 Aug 2026) | `egl` |
 
 ### (a) Evaluate the published models (NVIDIA GPU, 4 GB is enough)
 

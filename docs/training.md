@@ -24,7 +24,7 @@ test layouts of each).
 | Machine | Software | Used for |
 |---|---|---|
 | one Lambda Cloud instance: 2x H100 SXM5 80 GB, Ubuntu 22.04 | Python 3.12 (via uv), `lerobot[libero,smolvla,training]==0.6.1` from PyPI, `MUJOCO_GL=osmesa` | building the datasets, the three fine-tunes, uploading the models |
-| my Ubuntu laptop: RTX 3050 4 GB | LeRobot 0.6.2 built from source, `MUJOCO_GL=egl` | evaluating the four models, the summary and the figures |
+| my laptop: RTX 3050 4 GB, Ubuntu 24.04, Python 3.12.3 | LeRobot 0.6.2 built from source (commit `4aaff99b`), `MUJOCO_GL=egl` | evaluating the four models, the summary and the figures |
 
 The phone pipeline (tracking and demo generation, [README, Reproduce (c)](../README.md#c-phone-demos-regenerate-mine-or-film-your-own)) ran before this, on
 CPU, in a Python 3.11 venv with hf-libero 0.1.4, robosuite 1.4.0, MuJoCo 3.8.1 and OpenCV 5.0.
@@ -84,11 +84,13 @@ h5py, PyAV and OpenCV with `cv2.aruco`.
   exists, imports fail; `rm -rf ~/.libero` and import again.
 
 **Laptop (evaluation).** LeRobot 0.6.2 is not on PyPI (it has no release tag either). I
-installed it from a source checkout of the LeRobot repository, in a Python 3.12 venv made as above:
+installed it from a source checkout of the LeRobot repository at commit `4aaff99b` (28 Aug 2026),
+in a Python 3.12 venv made as above:
 
 ```bash
 cd ~                                   # outside this repository
 git clone https://github.com/huggingface/lerobot.git
+git -C lerobot checkout 4aaff99b       # the commit I evaluated with
 (cd lerobot && uv pip install -e ".[libero,smolvla,training]")
 ```
 
