@@ -16,6 +16,7 @@ usage:
 import argparse
 import glob
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -167,7 +168,8 @@ def main():
         with open(args.json, "w") as f:
             json.dump(summary, f, indent=1, default=str)
     print("\nALL COMPATIBLE" if ok else "\nNOT COMPATIBLE (see above)")
-    sys.exit(0 if ok else 1)
+    sys.stdout.flush(); sys.stderr.flush()
+    os._exit(0 if ok else 1)  # skip interpreter teardown: a native thread can abort it ("terminate called ...")
 
 
 if __name__ == "__main__":

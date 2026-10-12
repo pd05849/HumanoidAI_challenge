@@ -1,12 +1,12 @@
 # evaluation / training outputs (the per-try results that back the README live in results/)
-eval_logs/
+eval_logs*/
 outputs/
 *_episodes.jsonl
 !results/**/*_episodes.jsonl
 live.jpg
 
 # large media and data (host on the Hugging Face Hub instead); never commit raw clips
-*.mp4
+*.[mM][pP]4
 *.[mM][oO][vV]
 *.hdf5
 *.npz
@@ -19,6 +19,9 @@ data/raw/
 /datasets/
 /renders/
 /check_markers_out/
+/track_out/
+/markers_letter.pdf
+/markers_page[12].png
 
 # python
 __pycache__/

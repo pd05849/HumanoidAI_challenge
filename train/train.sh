@@ -38,6 +38,8 @@ OUT=outputs/train/${RUN}${TAG:+_$TAG}
 [[ -f "$DATA/$RUN/meta/info.json" ]] || { echo "no dataset $DATA/$RUN (run train/build_datasets.sh)"; exit 1; }
 [[ -f "$DATA/$RUN/meta/stats.pinned.json" ]] || echo "NOTE: $DATA/$RUN stats are not pinned (PIN_STATS=0?)"
 mkdir -p outputs/train
+# lerobot-train refuses an existing output folder, but tee would already have emptied its log
+[[ -e "$OUT" ]] && { echo "$OUT exists: delete it, or give a tag (bash train/train.sh $RUN run2)"; exit 1; }
 
 lerobot-train \
   --policy.path="$POLICY" \

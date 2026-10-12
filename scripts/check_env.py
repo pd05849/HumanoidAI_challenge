@@ -66,7 +66,10 @@ check("mujoco", version("mujoco"))
 check("LeRobot's LIBERO env", imports("lerobot.envs.libero"))
 check("LIBERO-90 task 21 renders", render)
 print("GPU")
-check("CUDA", gpu)
+try:  # informational: tracking, demo generation and the analysis run on the CPU
+    print(f"  OK       CUDA: {gpu()}")
+except Exception as ex:  # noqa: BLE001
+    print(f"  NO GPU   {ex}")
 
 if not ok:
     print('\nFix missing packages with:  uv pip install "lerobot[libero,smolvla,training]==0.6.1"'

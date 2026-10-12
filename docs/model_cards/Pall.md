@@ -63,7 +63,7 @@ lerobot-eval --policy.path=Delcastillo8/smolvla_libero_frying_pan_Pall \
 # moka pot: --env.task=libero_10 --env.task_ids='[2]'
 ```
 
-Keep `n_action_steps=10`. With SmolVLA's default of 50, I got 0 successes even on the task the
+Keep `n_action_steps=10`. With `n_action_steps=50` (the whole chunk), I got 0 successes even on the task the
 model was trained on. My numbers come from LeRobot 0.6.2 (source, commit 4aaff99b), `MUJOCO_GL=egl` and LeRobot's default
 render size.
 

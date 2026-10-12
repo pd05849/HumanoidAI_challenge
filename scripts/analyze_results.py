@@ -113,11 +113,13 @@ def main():
         tight = [k for k in range(len(test)) if test[k] < 25]
         rest = [k for k in range(len(test)) if test[k] >= 25]
         mid = [k for k in range(len(test)) if 25 <= test[k] < median]
+        fails = [k for k in range(len(test)) if not recs[k]["success"]]
         print(f"{name:5s} closer {ok(closer):2d}/{len(closer)}, farther {ok(farther):2d}/{len(farther)} "
               f"(Fisher p = {fisher(ok(closer), len(closer), ok(farther), len(farther)):.2g}) | moka pot moved: "
               f"closer {hit(closer)}, farther {hit(farther)} | under 25 cm {ok(tight)}/{len(tight)}, 25 cm and more "
               f"{ok(rest)}/{len(rest)} (p = {fisher(ok(tight), len(tight), ok(rest), len(rest)):.2g}), 25 cm to the "
-              f"median {ok(mid)}/{len(mid)} | rank test, start distance of successes vs failures (no cut-off): "
+              f"median {ok(mid)}/{len(mid)} | failures among the 6 tightest starts: "
+              f"{sum(k in order[:6] for k in fails)} of {len(fails)} | rank test, start distance of successes vs failures (no cut-off): "
               f"p = {rank_test([test[k] for k in range(len(test)) if recs[k]['success']], [test[k] for k in range(len(test)) if not recs[k]['success']]):.2g}")
 
     print(f"\n== start distance between the pan and the moka pot (centre to centre)")

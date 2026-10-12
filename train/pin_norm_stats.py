@@ -76,6 +76,7 @@ def main():
         if not backup.exists():
             raise SystemExit(f"no backup {backup}")
         shutil.copy(backup, stats_p)
+        (meta / "stats.pinned.json").unlink(missing_ok=True)  # train.sh warns again: stats not pinned
         print(f"restored {stats_p} from {backup}")
         return
     if not stats_p.exists():

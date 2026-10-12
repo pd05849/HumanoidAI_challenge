@@ -68,7 +68,7 @@ uv venv --python 3.12 && source .venv/bin/activate              # creates .venv/
 uv pip install "lerobot[libero,smolvla,training]==0.6.1"
 python -c "import libero.libero"       # first run asks for a dataset path: answer n
 export MUJOCO_GL=egl                   # or osmesa, see below
-python scripts/check_env.py            # every line should say OK
+python scripts/check_env.py            # every line should say OK ("NO GPU" is fine off the GPU machines)
 ```
 
 That one install brings everything the scripts use: SmolVLA, LIBERO and its simulator,
@@ -101,6 +101,7 @@ not need the `training` extra, but `check_env.py` reports accelerate as missing 
 
 ```bash
 python - <<'EOF'
+import lerobot.policies  # registers the policy types (smolvla, ...)
 from lerobot.configs.policies import PreTrainedConfig
 c = PreTrainedConfig.from_pretrained("HuggingFaceVLA/smolvla_libero")
 print("inputs ", {k: tuple(v.shape) for k, v in c.input_features.items()})
@@ -177,7 +178,9 @@ the 1.4 GB teleop HDF5 and the 1.2 GB `smolvla_libero` model. The build then wri
 datasets above, 183,770 frames in all, with both camera images inside the parquet files.
 `HuggingFaceVLA/libero`, stored the same way, takes 0.13 MB per frame (34.9 GB for 273,465
 frames), so expect over 20 GB for them. Each checkpoint holds a 1.2 GB model plus the optimizer
-state, and each run saves four. Plan for at least 50 GB free.
+state, and each run saves four. Plan for at least 50 GB free. LeRobot also caches every dataset
+it loads as Arrow files in `~/.cache/huggingface/datasets` (about twice the dataset size in a small
+test): point `HF_DATASETS_CACHE` at a large disk, or delete that folder after the build.
 
 | Step | Script | Output (`outputs/datasets/`) |
 |---|---|---|
@@ -343,8 +346,8 @@ python scripts/eval_with_log.py --policy.path=<policy> \
 # and --env.task=libero_10 --env.task_ids='[2]' --output_dir=eval_logs/<name>/moka
 ```
 
-Keep `--policy.n_action_steps=10`: with `n_action_steps=50` (SmolVLA's default: run the whole
-50-step action chunk before looking again) the model scored 0 even on the task it was trained on.
+Keep `--policy.n_action_steps=10`: with `n_action_steps=50` (run the whole
+50-step action chunk before looking again; smolvla_libero's own config says 1, the fine-tunes store 10) the model scored 0 even on the task it was trained on.
 `train/eval.sh` always passes 10. The step limits are LIBERO's: 400 for the frying pan, 520 for
 the moka pot. SmolVLA inference with batch 1 fits on the laptop's 4 GB GPU.
 
@@ -467,7 +470,7 @@ Measured on the machines above. Steps I did not time are marked.
 | Step | Machine | Time |
 |---|---|---|
 | setup (section 0) | cloud | not timed |
-| build the datasets (section 1) | cloud, `MUJOCO_GL=osmesa`, `TELEOP_JOBS=4` | not timed |
+| build the datasets (section 1) | cloud, `MUJOCO_GL=osmesa`, `TELEOP_JOBS=8` | not timed (teleop re-render: 44-85 s per demo on one core) |
 | 200-step timing run | cloud, 1 H100 | 0.78 s per step (`updt_s` 0.20 s + `data_s` 0.58 s) |
 | train T | cloud, GPU 0 alone | 4.0 h (20,000 steps) |
 | train P | cloud, GPU 1, shared with Pall | 3.9 h |
@@ -492,3 +495,5 @@ The training times come from the logs (`plot_loss.py` prints them in its table).
 | teleop: `state dim ... != env state dim` | the HDF5 was recorded with a different LIBERO scene model than the installed `hf-libero`; neither mode can load its states. Check the `hf-libero` version against the one `lerobot[libero]` pins |
 | `FileExistsError: Output directory ... already exists` | a training run with that name exists; delete it or give a tag: `bash train/train.sh P run2` |
 | CUDA out of memory in training | `BATCH=16 STEPS=40000`, the same for every run |
+| the build stops with `terminate called without an active exception` / `Aborted` right after `ALL COMPATIBLE` | a crash at interpreter exit (fixed in `train/check_datasets.py`); run the same command again, finished steps are skipped |
+| `train.sh` says `outputs/train/<RUN> exists` | that run is finished; delete the folder, or give a tag: `bash train/train.sh P run2` |

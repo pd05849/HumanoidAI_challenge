@@ -101,7 +101,7 @@ elif [[ "$TELEOP_JOBS" -le 1 || "${TELEOP_ARGS:-}" == *--demos* || "${TELEOP_ARG
   $PY train/convert_teleop_hdf5.py --like "$DATA/moka" --out "$DATA/teleop_pan" --overwrite --video \
       ${TELEOP_ARGS:-} 2>&1 | tee "$DATA/logs/teleop_pan.log"
 else
-  # Each demo is replayed in the simulator (~2 min each on one core): split the demos over
+  # Each demo is replayed in the simulator (about 1 min each on one core): split the demos over
   # TELEOP_JOBS processes, then merge the parts in demo order.
   H=${TELEOP_HDF5:-$($PY -c "import sys; sys.path.insert(0, 'train'); import convert_teleop_hdf5 as c; from huggingface_hub import hf_hub_download as d; print(d(c.HF_REPO, c.HF_FILE, repo_type='dataset'))" | tail -1)}
   N_DEMOS=$($PY -c "import sys, h5py; print(len(h5py.File(sys.argv[1], 'r')['data']))" "$H")

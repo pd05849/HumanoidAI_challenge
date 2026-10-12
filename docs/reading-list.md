@@ -45,7 +45,7 @@ The project's main references, with links: [how-it-works.md](how-it-works.md#ref
   the one that causes it (the instruction).
 - [Shortcut learning](https://arxiv.org/abs/2004.07780) (Geirhos et al., Nature Machine
   Intelligence 2020). Figure 1 and the part on catching shortcuts with out-of-distribution tests;
-  my twin task is one ([README, design choices](../README.md#design-choices)).
+  my twin task is one ([README, design choices](../README.md#design-choices-why-this-approach)).
 
 ## From phone video to robot data
 
@@ -57,7 +57,7 @@ The project's main references, with links: [how-it-works.md](how-it-works.md#ref
   ([sim/kitchen_controller.py](../sim/kitchen_controller.py)).
 - [X-Sim](https://arxiv.org/abs/2505.07096) (Dan et al., CoRL 2025) and
   [ORION](https://arxiv.org/abs/2405.20321) (Zhu et al., Autonomous Robots 2026). The real-to-sim
-  and plan-from-video parts: both [track the object, not the hand](../README.md#design-choices).
+  and plan-from-video parts: both [track the object, not the hand](../README.md#design-choices-why-this-approach).
 - [Learning by Cheating](https://arxiv.org/abs/1912.12294) (Chen et al., CoRL 2019). A teacher
   that sees the true state trains an image-only student. My controller reads the simulated pan's
   pose; SmolVLA sees only images.
@@ -77,7 +77,7 @@ The project's main references, with links: [how-it-works.md](how-it-works.md#ref
 
 - [Counterfactually-augmented data](https://arxiv.org/abs/1909.12434) (Kaushik et al., ICLR 2020).
   Pairs that differ in one detail and in the answer teach what matters, like [one scene with two
-  instructions](../README.md#design-choices) (text, so an analogy).
+  instructions](../README.md#design-choices-why-this-approach) (text, so an analogy).
 - LangGap again: the data-augmentation experiments, where mixing the easy LIBERO tasks back in
   lowered success. Mix ratios matter.
 - [Data Scaling Laws in Imitation Learning](https://arxiv.org/abs/2410.18647) (Lin et al., ICLR

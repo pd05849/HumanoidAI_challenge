@@ -21,8 +21,7 @@ hf upload Delcastillo8/smolvla_libero_frying_pan_Pall docs/model_cards/Pall.md R
 ```
 
 Each command adds or replaces `README.md` in that repository, in one commit. The model files,
-`train.log` and `dataset_build/` stay as they are. This works while the repositories are still
-private.
+`train.log` and `dataset_build/` stay as they are.
 
 The YAML block at the top of each card is what the Hub reads: license (Apache-2.0, the same as
 `smolvla_libero`), `base_model` (the "fine-tuned from" link), the training datasets and the tags.
