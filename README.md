@@ -790,41 +790,6 @@ models), `docs/img/` (the figures, with their tables), [`LICENSE`](LICENSE) (MIT
 | `scripts/replay_demo.py` | Replay of a LIBERO teleop demo |
 | `scripts/render_scenes.py` | Pictures of LIBERO's tasks (first frame, both cameras), any suite |
 
-## Glossary
-
-- **VLA (vision-language-action model):** a neural network that maps camera images and an
-  instruction to robot motions.
-- **SmolVLA, `smolvla_libero`, LeRobot:** SmolVLA is a small open VLA from Hugging Face.
-  `smolvla_libero` is SmolVLA trained on four LIBERO suites, published by Hugging Face; every run
-  here starts from it. LeRobot is Hugging Face's robot-learning library: the dataset format,
-  `lerobot-train` and `lerobot-eval`.
-- **LIBERO:** a robot simulator with 130 standard tasks, used to compare VLAs. Its tasks are
-  grouped in suites; `smolvla_libero` was trained on four of them (LIBERO-Spatial, -Object, -Goal
-  and LIBERO-10) but not on LIBERO-90, where the frying-pan twin lives.
-- **Twin task:** LIBERO-90 task 21, "turn on the stove and put the frying pan on it": the same
-  kitchen and objects as LIBERO-10 task 2 (the moka pot), one word different.
-- **Demo (demonstration):** a recording of a task being done: what the cameras saw and the arm
-  command at every step. Models learn by imitating demos.
-- **Episode:** one demo in a dataset, or one try in an evaluation, from its start layout to the end.
-- **Teleoperation:** a person drives the robot live to record demos.
-- **Fine-tuning:** continuing to train an already-trained model on a small amount of new data.
-- **Action chunk:** SmolVLA predicts the next 50 actions (2.5 s at 20 steps per second) at once.
-  `n_action_steps` is how many of them the robot carries out before the model looks again: 10 here.
-- **Object-centric:** describing a demonstration by what happened to the object, not by the hand.
-- **ArUco, ChArUco:** an ArUco marker is a printed black-and-white square with an ID number that
-  OpenCV finds in an image and whose 3-D pose it measures. A ChArUco board is a checkerboard with
-  ArUco markers in its white squares; its many corners give a precise pose and calibrate the
-  camera. Here the board on the stove defines the world frame and an 80 mm marker in the pan gives
-  the pan's pose.
-- **MimicGen:** a method (Mandlekar et al., 2023) that turns a few robot demos into many: it fits
-  their object-relative motion to new layouts, runs it in simulation and keeps the successes. I use
-  the same idea with my phone paths as the source.
-- **Layout:** where the pan, the moka pot and the stove stand at the start of a try or a demo
-  ("arrangement" above means the same). LIBERO's test has 50 fixed layouts per task; the
-  phone demos use new random ones.
-- **95 % interval:** the range of true success rates that a result out of 50 tries is consistent
-  with (Wilson score interval, computed by `train/summarize_evals.py`): 26/50 gives 39-65 %.
-
 ## Related work
 
 **What is new here, as far as I know:** (1) a same-scene, one-word twin test in the LIBERO-10
@@ -850,11 +815,7 @@ where to start reading: [docs/reading-list.md](docs/reading-list.md)):
 
 ## Acknowledgements
 
-Thank you to the Humanoid AI team for this challenge. It was a great experience. In a short time I
-went from filming a pan in my kitchen to fine-tuning and testing a robot foundation model on cloud
-GPUs, and I learned a lot along the way: how robot training data is made, how to test whether a
-model really reads its instructions, and how much the details of a demonstration matter.
-
+Thank you to the Humanoid AI team for this challenge. It was a great experience.
 Working at Humanoid AI would mean doing this kind of research every day, with real robots, and
 learning from a top-tier company and the people who build them. I would be excited to bring the
 same curiosity and care to your work, and to learn as much as I can from your team.
