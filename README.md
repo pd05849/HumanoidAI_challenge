@@ -1,5 +1,8 @@
 # Humanoid AI internship challenge
 
+**A one-word test for a robot foundation model (SmolVLA), and teaching it the missing word with 18 short
+phone clips (about 6 minutes of video).**
+
 This repository contains the project I chose for the robot learning research internship challenge
 at Humanoid AI.
 
@@ -8,15 +11,13 @@ Hugging Face's SmolVLA. Does SmolVLA follow a language instruction for a task it
 trained on? And when it has to be taught that task, does it learn better from a dataset I filmed
 with an iPad in my own kitchen, or from teleoperation data collected in the same LIBERO scene?
 
-**A one-word test for a robot foundation model (SmolVLA), and teaching it the missing word with 18 short
-phone clips (about 6 minutes of video).**
+![Three tries in LIBERO's kitchen. Left: the unchanged model, told to put the frying pan on the stove, lifts the moka pot instead. Middle: the model fine-tuned with phone-derived demos, same instruction, puts the frying pan on the stove. Right: the same fine-tuned model, told "moka pot", puts the moka pot on the stove](docs/img/rollouts.gif)
 
-![Three tries in LIBERO's kitchen. Left: the unchanged model, told to put the frying pan on the stove, puts the moka pot there instead. Middle: the model fine-tuned with phone-derived demos, same instruction, puts the frying pan on the stove. Right: the same fine-tuned model, told "moka pot", puts the moka pot on the stove](docs/img/rollouts.gif)
-
-*Left: the public model, told to put the **frying pan** on the stove, puts the **moka pot** there,
-the task it was trained on in this kitchen (it does so in 12 of its 50 tries; in the other 38 it
-lifts nothing). Middle and right: after fine-tuning with demos made from my iPad videos (run Pall),
-the same kind of model puts on the stove whichever object it is told.*
+*Left: the public model, told to put the **frying pan** on the stove, goes for the **moka pot**,
+the object of the task it was trained on in this kitchen (it lifts the moka pot first in 12 of its
+50 tries; in the other 38 it lifts nothing). Middle and right: after fine-tuning with demos made
+from my iPad videos (run Pall, the 153-demo run below), the same kind of model can put either
+object on the stove, whichever it is told (31/50 and 34/50 successes).*
 
 ## Goal, hypothesis and research questions
 
@@ -36,21 +37,19 @@ frying pan, where the public model `smolvla_libero` was trained only on the moka
 
 **Research questions.**
 
-1. Does SmolVLA follow a word instruction about a task it has never seen demonstrated? Here:
+1. Does SmolVLA follow an instruction about a task it has never seen demonstrated? Here:
    "put the **frying pan** on the stove", in a kitchen where it only learned "put the **moka pot**
    on the stove".
 2. If it does not, can demos made from my own iPad videos teach it? And does it learn better from
    them or from teleoperation demos of the same task, collected in the same LIBERO scene?
 
-**Short answers** (details in [section 4](#4-results)):
+**Short answers** (in full: [answers to the research questions](#answers-to-the-research-questions)):
 
-1. **No.** Told "frying pan", the public model succeeds 0 times in 50 and never lifts the pan (in
-   49 tries it does not move it at all); it lifts nothing (38 tries) or the moka pot (12).
-2. **The phone demos teach the word, but teleoperation data teaches it better.** 153 demos made
-   from 6 minutes of my video take the frying pan from 0 to 62 % success. LIBERO's 50 teleop demos
-   reach 90 %; 50 phone demos reach 36 %. After fine-tuning, every model goes for the object it is
-   told (one wrong first object in 300 tries), and the old moka-pot task is not hurt. The gap
-   to teleop is in the layouts where the moka pot starts close to the pan.
+1. **No.** Told "frying pan", the public model succeeds 0 times in 50 and never lifts the pan
+   ([4.1](#41-does-the-model-follow-the-word)).
+2. **The phone demos teach the word, but teleoperation data teaches it better:** 62 % success
+   with 153 phone-derived demos, 90 % with LIBERO's 50 teleop demos
+   ([4.2](#42-phone-demos-vs-teleoperation-demos)).
 
 ## Introduction: the problem
 
@@ -87,11 +86,12 @@ teleoperation is an open question for anyone building robots that take instructi
 - **Comparison:** fine-tune on LIBERO's 50 human-teleoperated demos (**T**), on 50 phone-derived
   demos (**P**), or on all 153 phone-derived demos (**Pall**). Test every model on both instructions
   in LIBERO's 50 test layouts.
-- **Result:** after fine-tuning, every model goes for the object it is told to grasp. Phone-derived
-  demos (knob turn and grasp scripted, the carry from the video) take the frying pan from **0 to
-  62 %** (Pall), against **90 %** with LIBERO's human demos. When the moka pot does not start close
-  to the pan, Pall nearly matches the human-trained model (23/25 vs 24/25). Where it starts close,
-  Pall loses (8/25 vs 21/25), and why is not settled yet ([section 4](#4-results)).
+- **Result:** after fine-tuning, no model goes for the wrong object (1 wrong first lift in 300
+  tries), and the old moka-pot task is not hurt. Phone-derived demos (knob turn and grasp
+  scripted, the carry from the video) take the frying pan from **0 to 62 %** (Pall), against
+  **90 %** with LIBERO's human demos. In the half of the test layouts where the moka pot starts
+  farther from the pan, Pall nearly matches the human-trained model (23/25 vs 24/25). In the
+  nearer half, Pall loses (8/25 vs 21/25), and why is not settled yet ([section 4](#4-results)).
 
 | Success in LIBERO's 50 test layouts | "…put the **frying pan** on it" | "…put the **moka pot** on it" |
 |---|---|---|
@@ -165,8 +165,9 @@ from.
 *Left: one of my 18 takes, in real time, with the tracking drawn on it. Right: the simulated robot
 in a new arrangement of LIBERO's kitchen. It turns the knob and grasps the handle (scripted), then
 carries the pan along my path at my own pace (1.0x). The two are lined up so that both carries
-start together. The training demos play the carry 1.5x faster, to fit LIBERO's 20 s limit: in
-this layout, the task is done at 15.7 s at my pace and at 13.0 s at 1.5x. The two camera views the
+start together. The training demos play the carry 1.5x faster, so that every take fits LIBERO's
+20 s limit with a margin: my carries last 7.3-10.9 s, and this one (8.2 s) finishes the task at
+15.7 s at my pace, at 13.0 s at 1.5x. The two camera views the
 model learns from: [still](docs/img/real_vs_sim.jpg).*
 
 ### Filming and tracking
@@ -243,11 +244,7 @@ enough. About
 1 in 5 layouts of the other takes gave no usable demo
 ([what didn't work](#what-worked-and-what-didnt)).
 
-I chose this route because it gives many demos from a few minutes of video, and physics keeps
-only motions the robot can really do. It also puts the phone data in LIBERO's own scene, with
-LIBERO's own camera images, so it can be compared head-to-head with LIBERO's teleop demos on
-LIBERO's own test. Other options, and why not:
-[design choices](#design-choices-why-this-approach).
+Why this route rather than others: [design choices](#design-choices-why-this-approach).
 
 The demos are public on Hugging Face in LeRobot format:
 [`Delcastillo8/libero90_frying_pan_phone`](https://huggingface.co/datasets/Delcastillo8/libero90_frying_pan_phone)
@@ -269,8 +266,8 @@ carry comes from the video. The other two are scripted in
    where the handle and the moka pot are, so the script can choose a top-down grasp of the handle
    that keeps the wide gripper clear of the moka pot. When the moka pot sits too close for a
    collision-free grasp, it takes the grasp with the most clearance. DemoGen
-   ([arXiv:2502.16932](https://arxiv.org/abs/2502.16932)) splits demos in the same way: it plans
-   the free motion and copies the object motion.
+   ([arXiv:2502.16932](https://arxiv.org/abs/2502.16932)) uses a similar split: it plans the free
+   motion and copies the motion in contact with the object.
 3. **The knob turn is not what the new word is about.** It is the same in both tasks, and the
    public model already learned it from the moka-pot demos. What the instruction changes is which
    object goes onto the stove. The script grasps the pan, as a teleoperator would, so the model
@@ -355,7 +352,7 @@ demo timings: [docs/img/teleop_vs_phone.md](docs/img/teleop_vs_phone.md)).
 
 Which object each model lifted first (more than 3 cm), in its 50 tries per instruction:
 
-| First object lifted | told "frying pan": pan / moka pot / nothing | told "moka pot": moka pot / pan / nothing |
+| First object lifted | told "frying pan": pan (right) / moka pot (wrong) / nothing | told "moka pot": moka pot (right) / pan (wrong) / nothing |
 |---|---|---|
 | unchanged `smolvla_libero` | 0 / **12** / 38 | 28 / 0 / 22 |
 | **T** | **46** / 0 / 4 | 35 / 0 / 15 |
@@ -370,7 +367,8 @@ research question 1: no.
 
 **Every fine-tune goes for the object it is told, in both directions.** In the 300 tries of the
 three fine-tunes, one lifted the wrong object first (Pall, told "frying pan", lifted the moka
-pot). When they fail, they fail by lifting nothing, not by lifting the wrong object.
+pot). Of their 105 failures, 95 lift nothing, 9 lift the right object and still fail, and 1 lifts
+the wrong one.
 
 **The old task is not hurt.** On the moka pot, the fine-tunes score 32-35/50 against the unchanged
 model's 26/50. None of these differences is significant (p = 0.10-0.31), so the original skill
@@ -382,8 +380,10 @@ is not measurably worse; if anything it is slightly better (every fine-tune also
 **Phone demos teach the new instruction, but less well than human robot demos.** Frying pan: 36 %
 with 50 phone demos, 62 % with 153, 90 % with LIBERO's 50 teleoperation demos. Demo for demo,
 teleop is clearly better: T beats P (p = 2e-8), and 50 teleop demos still beat 153 phone demos
-(p = 0.002). More phone demos helped: Pall beats P (p = 0.016). The 153 demos come from the same 6 minutes
-of video as the 50: the extra demos are new layouts of the same clips.
+(p = 0.002). Pall beats P (p = 0.016, uncorrected), but it also differs from P in passes over
+the data and in its share of moka-pot demos (section 3), so this is not a clean test of the number
+of demos. The 153 demos come from the same 6 minutes of video as the 50: the extra demos are new
+layouts of the same clips.
 
 How the frying-pan tries failed:
 
@@ -425,7 +425,7 @@ scripted grasp also changes near the moka pot (at an angle, with the pan turning
 so tight-layout phone demos may simply be harder to imitate. A next version should test both: keep
 the tight layouts, and give them a cleaner grasp.
 
-### 4.4 The models picked up the timing of their demos
+### 4.4 The models' timing matches their demos'
 
 Told "frying pan", the phone-trained models turn the knob and lift the pan earlier than T
 (medians: stove on at 4.0 s for P and 3.9 s for Pall, against 4.5 s for T; first lift at 8.0 and
@@ -439,9 +439,9 @@ one; data loading, not the GPU, set the pace: [docs/training.md](docs/training.m
 
 ![Training loss of T, P and Pall on a log scale: P and Pall fall steeply in the first 1 000 steps while T starts lower, at 0.55, and falls gently; then all three fall slowly and flatten over the last 5 000 steps at 0.058 (P), 0.075 (T) and 0.080 (Pall)](docs/img/train_loss.png)
 
-*P ends with the lowest loss (0.058; T 0.075, Pall 0.080) yet the lowest success of the three. This
-is most likely because its 50 scripted demos are more alike than human ones, and each is seen 26
-times. Pall's 153 demos, of the same kind but each seen 12 times, end highest. The loss is measured
+*P ends with the lowest loss (0.058; T 0.075, Pall 0.080) yet the lowest success of the three,
+probably because its 50 scripted demos are more alike than human ones. Pall's 153 demos, of the
+same kind but each seen 12 times instead of 26, end highest. The loss is measured
 on each run's own data, so it shows convergence, not which model is better. Table:
 [train_loss.md](docs/img/train_loss.md).*
 
@@ -453,7 +453,8 @@ on each run's own data, so it shows convergence, not which model is better. Tabl
 - **One training run per setting** (seed 1000). How much another seed would move the results was
   not measured.
 - **The p-values are not corrected** for the number of tests. Over the six frying-pan comparisons,
-  a Bonferroni correction would drop Pall vs P (p = 0.016); the others stay.
+  a Bonferroni correction would drop Pall vs P (p = 0.016); the others stay. The closer/farther
+  tests in 4.3 are uncorrected too.
 - **Evaluation settings.** [`train/eval.sh`](train/eval.sh) (`lerobot-eval` with a per-try log),
   `n_action_steps=10`, `num_steps=10`, LIBERO's step limits (400 frying pan, 520 moka pot),
   LeRobot's default render size (360x360, while all training images are 256x256; the same for
@@ -462,15 +463,17 @@ on each run's own data, so it shows convergence, not which model is better. Tabl
 
 ### Answers to the research questions
 
-1. **Does SmolVLA follow a word instruction about a task it has never seen demonstrated?** No. The
-   new word changes its behaviour (it lifts the moka pot less often), but it never goes to the
-   frying pan: 0/50. This matches the hypothesis and LangGap's findings, in a LIBERO scene they
-   did not test.
+1. **Does SmolVLA follow an instruction about a task it has never seen demonstrated?** No: 0/50,
+   and it never lifts the frying pan. This matches the first half of the hypothesis, and LangGap's
+   findings, in a LIBERO scene they did not test. But the model does not simply replay the
+   moka-pot task either: the new word changes its behaviour (it lifts the moka pot first in 12
+   tries instead of 28), and in most tries it lifts nothing.
 2. **Does it learn the task better from iPad-derived demos or from teleoperation data?** From
    teleoperation data: 45/50 with 50 teleop demos, against 18/50 with 50 phone demos and 31/50
    with 153. But the phone demos do teach the word, from 6 minutes of video, without hurting the
-   old task, and away from the tight layouts they nearly match teleop (23/25 vs 24/25). The next
-   things to try: keep the tight layouts in the phone demos, and give them a cleaner grasp (4.3).
+   old task, and in the farther half of the layouts Pall nearly matches teleop (23/25 vs 24/25).
+   The next things to try: keep the tight layouts in the phone demos, and give them a cleaner
+   grasp (4.3).
 
 ## Design choices: why this approach
 
@@ -520,7 +523,8 @@ less well than LIBERO's human demos, mainly in tight layouts ([section 4](#4-res
 **Worked**
 
 - **Tracking the object, not the hand.** Printed markers gave a clean 3-D path for every take. The
-  pan's rim partly hid the marker (the camera looked down only 34°).
+  pan's rim partly hid the marker (the camera looked down only 34°), so the tracker needed its
+  template-matching step; it still measured the pan in 95-100 % of the frames.
 - **Physics-checked demos.** Every robot demo was executed and passed LIBERO's own success check.
   6 spot-checked demos rebuild pixel-identically in LeRobot's evaluation environment and replay to
   success at the same step (one a step later).
@@ -534,13 +538,13 @@ less well than LIBERO's human demos, mainly in tight layouts ([section 4](#4-res
 
 **Didn't work, or needed a fix**
 
-- **Phone-trained models lose in tight layouts.** When the moka pot starts close to the pan, Pall
-  bumps it and succeeds 8/25 times (T 21/25); farther away it nearly matches T (23/25 vs 24/25).
-  The phone demos have fewer tight starts, but why Pall loses there is not settled ([section 4](#4-results)).
+- **Phone-trained models lose in tight layouts** (Pall 8/25 in the nearer half, T 21/25); why is
+  not settled ([4.3](#43-where-the-phone-demos-lose-tight-layouts)).
 - **About 1 in 5 random layouts gave no usable demo** (42 of 195 for the 17 usable takes: 20 strayed
   more than 2 cm from the path, 17 failed the task, 5 nudged the moka pot), often with the moka pot
-  next to the pan's handle (no collision-free grasp in 38 of the 222 layouts tried; only 8 of those
-  were kept). New layouts replace them, so tight layouts are under-represented.
+  next to the pan's handle (no collision-free grasp in 38 of the 222 layouts tried over all 18
+  takes; only 8 of those were kept). The take that gave no demos accounts for the other 27 of the
+  222 ([how-it-works, step 7](docs/how-it-works.md#7-many-layouts-keep-the-successes-the-mimicgen-idea)). New layouts replace them, so tight layouts are under-represented.
 - **The pan turns in the robot's grasp** (median 12°, over 20° in a third of the demos, up to 35°).
   The controller steers on the pan itself, so the pan still follows the path, but the arm moves
   differently from a clean carry.
@@ -558,10 +562,12 @@ less well than LIBERO's human demos, mainly in tight layouts ([section 4](#4-res
 **Limits to keep in mind**
 
 - **Scripted parts.** The knob turn and the grasp are scripted, so *which object* is picked up (the
-  pan, by its handle) is fixed by the script for this task. The video supplies the carry: where the
-  pan goes, along which path, how high and how fast.
+  pan, by its handle) is fixed by the script for this task
+  ([why](#why-the-knob-turn-and-the-grasp-are-scripted)). The video supplies the carry.
 - **What P vs T can and cannot show.** The phone demos' arm motions come from a scripted controller,
-  T's from people, and their rhythm differs (section 3).
+  T's from people, and their rhythm differs (section 3). So a difference between P and T may come
+  from scripted vs human arm motion as much as from the video. A control run with a scripted carry
+  (no video path) would separate the two; I did not run it.
 
 ## Reproduce
 
