@@ -12,7 +12,7 @@
 #
 # Usage, as run for the results (repo root, LeRobot 0.6.1 env with lerobot[libero,smolvla,training];
 # MUJOCO_GL=osmesa where NVIDIA's EGL vendor file is missing, egl otherwise; no GPU needed):
-#   PHONE_DATASET=Delcastillo8/libero90_frying_pan_phone_50 \
+#   MUJOCO_GL=osmesa TELEOP_JOBS=8 PHONE_DATASET=Delcastillo8/libero90_frying_pan_phone_50 \
 #   PHONE_ALL_DATASET=Delcastillo8/libero90_frying_pan_phone bash train/build_datasets.sh
 # Give both: they have no defaults. Without PHONE_DATASET there is no P, without PHONE_ALL_DATASET
 # no Pall. Each is a LeRobot dataset folder (e.g. datasets/phone_pan_P and datasets/phone_pan_all

@@ -23,7 +23,9 @@ The project's main references, with links: [how-it-works.md](how-it-works.md#ref
 ## How SmolVLA makes actions
 
 - [π0](https://arxiv.org/abs/2410.24164) (Black et al., RSS 2025). The model section and Figure 3:
-  a vision-language model plus an action expert trained with flow matching on [50-action chunks](../README.md#glossary).
+  a vision-language model plus an action expert trained with flow matching on 50-action chunks
+  (the next 50 actions, 2.5 s at LIBERO's 20 Hz, predicted at once;
+  [why only 10 of them are run](../README.md#what-worked-and-what-didnt)).
   SmolVLA copies this design.
 - [Flow Matching Guide and Code](https://arxiv.org/abs/2412.06264) (Lipman et al., 2024). A
   straight path from noise to the actions, followed in small steps at test time; `num_steps=10`

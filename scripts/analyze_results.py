@@ -47,12 +47,18 @@ def fisher(a, n_a, b, n_b):
 
 
 def rank_test(x, y):
-    """Two-sided Mann-Whitney U p-value (no cut-off needed), or nan without scipy."""
+    """Two-sided Mann-Whitney U p-value (no cut-off needed); None without both groups, nan without scipy."""
+    if not x or not y:
+        return None
     try:
         from scipy.stats import mannwhitneyu
     except ImportError:
         return float("nan")
-    return mannwhitneyu(x, y).pvalue if x and y else float("nan")
+    return mannwhitneyu(x, y).pvalue
+
+
+def fmt_p(p):
+    return "n/a (needs both successes and failures)" if p is None else f"p = {p:.2g}"
 
 
 def load(root, name, tag):
@@ -120,7 +126,7 @@ def main():
               f"{ok(rest)}/{len(rest)} (p = {fisher(ok(tight), len(tight), ok(rest), len(rest)):.2g}), 25 cm to the "
               f"median {ok(mid)}/{len(mid)} | failures among the 6 tightest starts: "
               f"{sum(k in order[:6] for k in fails)} of {len(fails)} | rank test, start distance of successes vs failures (no cut-off): "
-              f"p = {rank_test([test[k] for k in range(len(test)) if recs[k]['success']], [test[k] for k in range(len(test)) if not recs[k]['success']]):.2g}")
+              f"{fmt_p(rank_test([test[k] for k in range(len(test)) if recs[k]['success']], [test[k] for k in range(len(test)) if not recs[k]['success']]))}")
 
     print(f"\n== start distance between the pan and the moka pot (centre to centre)")
     for src, label in [("test_layout", "test layouts"), ("teleop_demo", "LIBERO human demos (T)"),

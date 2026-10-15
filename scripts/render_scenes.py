@@ -1,4 +1,4 @@
-"""Render the first frame of every LIBERO task (front camera), as the policy sees it.
+"""Render the first frame of every LIBERO task (front and wrist cameras), as the policy sees it.
 
 Usage:
     MUJOCO_GL=egl python scripts/render_scenes.py --out renders               # all 130 tasks

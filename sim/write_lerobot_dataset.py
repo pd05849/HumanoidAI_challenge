@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Write make_demos.py episodes (episodes/<take>_seed<S>.npz + .json) as a LeRobot v3.0 dataset
+r"""Write make_demos.py episodes (episodes/<take>_seed<S>.npz + .json) as a LeRobot v3.0 dataset
 (LeRobot 0.6.x, Python 3.12 venv), then load it back and check it.
 
 usage:

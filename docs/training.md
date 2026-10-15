@@ -1,7 +1,7 @@
 # Training and evaluation
 
 I fine-tuned [`smolvla_libero`](https://huggingface.co/HuggingFaceVLA/smolvla_libero) three
-times. The runs are identical except for where the frying-pan demos come from:
+times. The runs are identical except for their frying-pan demos:
 
 | Run | Frying-pan demos ("turn on the stove and put the **frying pan** on it") | Moka-pot demos ("...put the **moka pot** on it") | Episodes | Frames |
 |---|---|---|---|---|
@@ -135,6 +135,7 @@ The phone-derived datasets are public on Hugging Face, so the build downloads th
 
 ```bash
 export MUJOCO_GL=osmesa      # the script defaults to egl; use egl where it works
+TELEOP_JOBS=8 \
 PHONE_DATASET=Delcastillo8/libero90_frying_pan_phone_50 \
 PHONE_ALL_DATASET=Delcastillo8/libero90_frying_pan_phone \
   bash train/build_datasets.sh
@@ -178,7 +179,8 @@ the 1.4 GB teleop HDF5 and the 1.2 GB `smolvla_libero` model. The build then wri
 datasets above, 183,770 frames in all, with both camera images inside the parquet files.
 `HuggingFaceVLA/libero`, stored the same way, takes 0.13 MB per frame (34.9 GB for 273,465
 frames), so expect over 20 GB for them. Each checkpoint holds a 1.2 GB model plus the optimizer
-state, and each run saves four. Plan for at least 50 GB free. LeRobot also caches every dataset
+state, and each run saves four. Plan for about 100 GB free, LeRobot's dataset cache included (an
+estimate from these sizes). LeRobot caches every dataset
 it loads as Arrow files in `~/.cache/huggingface/datasets` (about twice the dataset size in a small
 test): point `HF_DATASETS_CACHE` at a large disk, or delete that folder after the build.
 
@@ -299,9 +301,13 @@ for RUN in T P Pall; do
   REPO=$HF_USER/smolvla_libero_frying_pan_$RUN
   hf upload $REPO outputs/train/$RUN/checkpoints/last/pretrained_model . --private
   hf upload $REPO outputs/train/$RUN.log train.log
-  hf upload $REPO outputs/datasets/logs dataset_build
+  hf upload $REPO outputs/datasets dataset_build --include "logs/*.log" --include "check_*.json" \
+      --include "check_*.png" --include "teleop_pan_report.json"
 done
 ```
+
+They were uploaded private; I then added a model card to each ([model_cards/](model_cards/)) and
+made them public in each repository's settings.
 
 The three models:
 
@@ -436,7 +442,8 @@ and fails with `Instruction "train" corresponds to no data`.
   training set starts from the test layouts.
 
 **Phone demos (c).** `sim/make_demos.py` already stores frames in the same conventions.
-`train/convert_phone_npz.py` keeps kept, successful episodes not generated on test layouts, trims
+`train/convert_phone_npz.py` keeps the episodes marked kept and successful, skips any generated on
+the test layouts, trims
 each to 10 frames after the first success (LIBERO's teleop demos also end right after success, and
 an eval episode stops at it), recomputes the state from the raw robot state when the npz has it,
 and writes them. `--max-episodes N` takes N episodes round-robin over the takes; that is how
@@ -446,8 +453,8 @@ datasets used for training were written with `train/convert_phone_npz.py`.
 
 **Merging (d).** LeRobot only merges datasets with the same fps, robot_type and feature
 definitions. The converters therefore copy them from the moka subset (`--like`), so their images
-are stored inside the parquet files as in moka. Afterwards the build rewrites our
-`meta/info.json` where only spelling differs (feature names, legacy keys such as
+are stored inside the parquet files as in moka. Afterwards the build rewrites the phone
+datasets' `meta/info.json` where only spelling differs (feature names, legacy keys such as
 `video.is_depth_map`), after checking that sizes, fps and codec really agree. A dataset that
 differs in more than spelling, such as the video-based phone datasets from the Hub, is decoded and
 written again in moka's format (`train/conform_dataset.py`; frames are not resampled). The merge

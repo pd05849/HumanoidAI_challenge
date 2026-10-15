@@ -184,7 +184,7 @@ In one sentence: R2R2R-style phone capture of the object's path, MimicGen-style 
 success filtering in physics, DemoGen-style split between planned free motion and copied object
 motion, used to teach a model **one missing instruction word** in a same-scene twin task.
 
-## What is honest to say about this
+## Limitations
 
 - The knob turn and the grasp are scripted, not learned from the video, so which object is
   picked up (the pan, by its handle) is fixed by the script. The video contributes the **carry**:

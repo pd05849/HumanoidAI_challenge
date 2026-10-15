@@ -1,4 +1,4 @@
-"""Side-by-side comparison of two LIBERO-format LeRobot datasets of the same task: LIBERO's
+r"""Side-by-side comparison of two LIBERO-format LeRobot datasets of the same task: LIBERO's
 human-teleoperated demos (run T) and the phone-derived demos (run P).
 
     hf download Delcastillo8/libero90_frying_pan_phone_50 --repo-type dataset --local-dir datasets/phone_pan_P

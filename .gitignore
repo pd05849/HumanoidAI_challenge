@@ -27,3 +27,14 @@ data/raw/
 __pycache__/
 *.pyc
 .venv/
+
+# keep out of a public repo
+.env
+.env.*
+.netrc
+*.[hH][eE][iI][cC]
+*.[aA][vV][iI]
+*.[mM]4[vV]
+*.[mM][kK][vV]
+wandb/
+.DS_Store

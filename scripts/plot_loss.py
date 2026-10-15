@@ -1,4 +1,4 @@
-"""Training-loss curves of the fine-tunes, read from the lerobot-train logs.
+r"""Training-loss curves of the fine-tunes, read from the lerobot-train logs.
 
     python scripts/plot_loss.py outputs/models/T/train.log outputs/models/P/train.log \
         outputs/models/Pall/train.log --names T P Pall --out docs/img/train_loss
